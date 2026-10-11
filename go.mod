@@ -6,7 +6,7 @@ require (
 	github.com/caarlos0/env/v11 v11.4.1
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/client_model v0.6.3
-	golang.org/x/sync v0.23.0
+	golang.org/x/sync v0.24.0
 	sigs.k8s.io/external-dns v0.23.0
 )
 

@@ -1,9 +1,9 @@
 [tools]
 actionlint = "1.7.12"
 go = "1.27.2"
-"go:golang.org/x/vuln/cmd/govulncheck" = "v1.8.0"
+"go:golang.org/x/vuln/cmd/govulncheck" = "v1.9.0"
 golangci-lint = "2.14.0"
-lefthook = "2.2.0"
+lefthook = "2.2.1"
 oxfmt = "0.72.0"
 zizmor = "1.30.1"
 

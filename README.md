@@ -132,6 +132,13 @@ See the [chart values](https://github.com/kubernetes-sigs/external-dns/blob/mast
 | `UNIFI_RETRY_ATTEMPTS`      | Total attempts per request (including the first).                                     | `3`       |
 | `UNIFI_RETRY_INITIAL_DELAY` | Initial backoff before the first retry.                                               | `500ms`   |
 | `UNIFI_RETRY_MAX_DELAY`     | Maximum backoff between retries (also caps `Retry-After`).                            | `10s`     |
+| `UNIFI_REQUEST_TIMEOUT`     | Per-attempt timeout for controller requests. Unset disables it (see below).           | —         |
+
+#### Request timeouts
+
+ExternalDNS gives each call to the webhook a fixed budget: `--webhook-provider-read-timeout` plus `--webhook-provider-write-timeout` (5s + 10s by default). If the webhook has not answered by then, ExternalDNS treats it as a fatal error and exits; an HTTP 5xx from the webhook is only logged as a soft error. Without a per-attempt timeout, a controller that accepts the connection and then stalls keeps the webhook waiting past that budget, and ExternalDNS restarts instead of retrying on the next sync.
+
+Set `UNIFI_REQUEST_TIMEOUT` to bound each attempt. An attempt that times out before the controller answers is retried like any other network error (for `GET` and `DELETE`); a stall after the response headers fails without a retry. Either way, once the request gives up the webhook answers `500`. Size it so `UNIFI_RETRY_ATTEMPTS × UNIFI_REQUEST_TIMEOUT` plus the backoff between attempts stays below the ExternalDNS budget. With the defaults (3 attempts, 500ms initial delay, up to 50% jitter) a `4s` timeout gives a worst case of about 14.3s, under the 15s default. `/records` fetches pages of up to 200 records sequentially, each with its own attempts, so with more than 200 records the worst case adds up across pages. Alternatively, raise the ExternalDNS timeouts; keep their sum below `SERVER_WRITE_TIMEOUT`.
 
 #### Cloud connector
 

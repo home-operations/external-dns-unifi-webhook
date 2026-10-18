@@ -39,6 +39,8 @@ func TestConfigValidate(t *testing.T) {
 			c.RetryMaxDelay = minRetryInitialDelay
 		}, false},
 		{"max delay below initial", func(c *Config) { c.RetryMaxDelay = 100 * time.Millisecond }, true},
+		{"request timeout negative", func(c *Config) { c.RequestTimeout = -time.Second }, true},
+		{"request timeout set", func(c *Config) { c.RequestTimeout = 4 * time.Second }, false},
 		{"cloud host without console id", func(c *Config) { c.Host = "https://api.ui.com" }, true},
 		{"cloud host with console id", func(c *Config) {
 			c.Host = "https://api.ui.com"

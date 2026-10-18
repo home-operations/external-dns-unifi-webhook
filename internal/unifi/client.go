@@ -106,7 +106,7 @@ func newUnifiClient(config *Config) (*httpClient, error) {
 	// externaldns_webhook_unifi_api_duration_seconds (see RecordUniFiAPICall).
 	c := &httpClient{
 		cfg:   config,
-		httpc: &http.Client{Transport: transport},
+		httpc: &http.Client{Transport: transport, Timeout: config.RequestTimeout},
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), siteResolveTimeoutFor(config))

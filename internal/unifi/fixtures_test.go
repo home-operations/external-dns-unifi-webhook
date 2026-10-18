@@ -43,7 +43,10 @@ func fixture(t *testing.T, name string) []byte {
 // testClient builds an httpClient pointed at srv with siteID pre-resolved, so
 // tests skip the startup site-resolution round trip.
 func testClient(srv *httptest.Server, cfg *Config) *httpClient {
-	return &httpClient{cfg: cfg, httpc: srv.Client(), siteID: testSiteUUID}
+	httpc := srv.Client()
+	httpc.Timeout = cfg.RequestTimeout
+
+	return &httpClient{cfg: cfg, httpc: httpc, siteID: testSiteUUID}
 }
 
 func fixtureClient(t *testing.T, handler http.HandlerFunc) (*httpClient, func()) {

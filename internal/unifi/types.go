@@ -36,6 +36,15 @@ type Config struct {
 	RetryInitialDelay time.Duration `env:"UNIFI_RETRY_INITIAL_DELAY" envDefault:"500ms"`
 	RetryMaxDelay     time.Duration `env:"UNIFI_RETRY_MAX_DELAY"     envDefault:"10s"`
 	ApplyWorkers      int           `env:"UNIFI_APPLY_WORKERS"       envDefault:"5"`
+	// RequestTimeout bounds a single attempt against the controller, including
+	// reading the response body. Zero (the default) leaves attempts bounded only
+	// by the caller's context. ExternalDNS gives the whole webhook call a fixed
+	// budget (--webhook-provider-read-timeout + --webhook-provider-write-timeout)
+	// and exits when it expires, while an HTTP 5xx from the webhook is only
+	// logged. A per-attempt timeout turns a stalled controller into a retryable
+	// network error and, once retries are exhausted, a 5xx, as long as
+	// attempts × timeout + backoff stays below that budget.
+	RequestTimeout time.Duration `env:"UNIFI_REQUEST_TIMEOUT" envDefault:"0"`
 }
 
 // isCloud reports whether requests route through the Ubiquiti cloud connector
@@ -91,6 +100,9 @@ func (c Config) Validate() error {
 	if c.RetryMaxDelay < c.RetryInitialDelay {
 		return fmt.Errorf("UNIFI_RETRY_MAX_DELAY (%s) must be >= UNIFI_RETRY_INITIAL_DELAY (%s)",
 			c.RetryMaxDelay, c.RetryInitialDelay)
+	}
+	if c.RequestTimeout < 0 {
+		return fmt.Errorf("UNIFI_REQUEST_TIMEOUT must be >= 0, got %s", c.RequestTimeout)
 	}
 
 	return nil

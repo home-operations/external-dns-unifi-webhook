@@ -16,8 +16,8 @@ type ProbeFunc func(ctx context.Context) error
 // probeTimeout bounds a single upstream readiness probe. The probe runs
 // detached from any caller's request context (see Check), so it needs its own
 // ceiling — without one a hung upstream connection (the UniFi client sets no
-// overall http.Client timeout, relying on ctx) would block the singleflight
-// slot forever.
+// http.Client timeout unless UNIFI_REQUEST_TIMEOUT is configured, relying on
+// ctx) would block the singleflight slot forever.
 //
 // Deliberately NOT sized to the UniFi client's worst-case retry budget (which
 // Retry-After hints can stretch to tens of seconds): a controller deep in a

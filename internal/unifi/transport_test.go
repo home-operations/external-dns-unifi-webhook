@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/pem"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -413,6 +414,38 @@ func TestDoRequest_NetworkErrorRetries(t *testing.T) {
 	}
 	if _, ok := errors.AsType[*NetworkError](err); !ok {
 		t.Errorf("expected NetworkError, got %T: %v", err, err)
+	}
+}
+
+// TestDoRequest_RequestTimeoutRetriesThenFails: a controller that accepts the
+// connection but never answers must trip the per-attempt timeout, be retried
+// like any other network error, and finally surface as a NetworkError rather
+// than hanging until the caller's context expires.
+func TestDoRequest_RequestTimeoutRetriesThenFails(t *testing.T) {
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		// Hold the request until the client gives up and closes the connection.
+		<-r.Context().Done()
+	}))
+	defer srv.Close()
+
+	c := newRetryClient(t, srv, &Config{RetryAttempts: 2, RequestTimeout: 250 * time.Millisecond})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err := c.doRequest(ctx, http.MethodGet, srv.URL+"/static-dns/", nil)
+	if err == nil {
+		t.Fatal("expected error against a stalled server")
+	}
+	if _, ok := errors.AsType[*NetworkError](err); !ok {
+		t.Errorf("expected NetworkError, got %T: %v", err, err)
+	}
+	if ne, ok := errors.AsType[net.Error](err); !ok || !ne.Timeout() {
+		t.Errorf("expected a timeout error, got %T: %v", err, err)
+	}
+	if got := calls.Load(); got != 2 {
+		t.Errorf("expected 2 attempts, got %d", got)
 	}
 }
 

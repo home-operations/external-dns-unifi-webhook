@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.10.15](https://github.com/home-operations/external-dns-unifi-webhook/compare/0.10.14...0.10.15) (2026-10-24)
+
+
+### Miscellaneous Chores
+
+* **github-action:** update action jdx/mise-action (v5.2.1 → v5.2.2) ([#368](https://github.com/home-operations/external-dns-unifi-webhook/issues/368)) ([ee0ebfc](https://github.com/home-operations/external-dns-unifi-webhook/commit/ee0ebfce7cd75c8cd69b0d04669fd1857d87c8c0))
+* **github-action:** update github-actions ([#365](https://github.com/home-operations/external-dns-unifi-webhook/issues/365)) ([81f6a28](https://github.com/home-operations/external-dns-unifi-webhook/commit/81f6a289cda41ef5794b280b82004e297a907224))
+* **mise:** update tool oxfmt (0.73.0 → 0.74.0) ([#367](https://github.com/home-operations/external-dns-unifi-webhook/issues/367)) ([dc04af3](https://github.com/home-operations/external-dns-unifi-webhook/commit/dc04af3a595eaab3909614c425b8481258d451e2))
+
 ## [0.10.14](https://github.com/home-operations/external-dns-unifi-webhook/compare/0.10.13...0.10.14) (2026-10-21)
 
 

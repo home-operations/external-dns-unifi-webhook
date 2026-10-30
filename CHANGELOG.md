@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.10.15](https://github.com/home-operations/external-dns-unifi-webhook/compare/0.10.14...0.10.15) (2026-10-30)
+
+
+### Features
+
+* **go:** update module sigs.k8s.io/external-dns (v0.23.0 → v0.24.0) ([#370](https://github.com/home-operations/external-dns-unifi-webhook/issues/370)) ([266aa36](https://github.com/home-operations/external-dns-unifi-webhook/commit/266aa3680a1586cb52e6cfd066e167d7989ce307))
+
+
+### Continuous Integration
+
+* mark issues and PRs stale after 180 days, close 14 days later ([732b636](https://github.com/home-operations/external-dns-unifi-webhook/commit/732b636ec0efa054212306fafd637b07426232d3))
+
+
+### Miscellaneous Chores
+
+* **github-action:** update action docker/github-builder (v1.18.0 → v1.18.1) ([#369](https://github.com/home-operations/external-dns-unifi-webhook/issues/369)) ([fa3fc5e](https://github.com/home-operations/external-dns-unifi-webhook/commit/fa3fc5e74c66d63fa8d625a55dd416a579c38232))
+* **github-action:** update action jdx/mise-action (v5.2.1 → v5.2.2) ([#368](https://github.com/home-operations/external-dns-unifi-webhook/issues/368)) ([ee0ebfc](https://github.com/home-operations/external-dns-unifi-webhook/commit/ee0ebfce7cd75c8cd69b0d04669fd1857d87c8c0))
+* **github-action:** update action jdx/mise-action (v5.2.2 → v5.2.3) ([#371](https://github.com/home-operations/external-dns-unifi-webhook/issues/371)) ([5b6365c](https://github.com/home-operations/external-dns-unifi-webhook/commit/5b6365ca2fafb41cefd5c0217c50437fae36a068))
+* **github-action:** update action jdx/mise-action (v5.2.3 → v5.2.4) ([#373](https://github.com/home-operations/external-dns-unifi-webhook/issues/373)) ([09d3fc0](https://github.com/home-operations/external-dns-unifi-webhook/commit/09d3fc0ede8fa44da158b56ad81b943bcb6425f3))
+* **github-action:** update github-actions ([#365](https://github.com/home-operations/external-dns-unifi-webhook/issues/365)) ([81f6a28](https://github.com/home-operations/external-dns-unifi-webhook/commit/81f6a289cda41ef5794b280b82004e297a907224))
+* **mise:** update tool oxfmt (0.73.0 → 0.74.0) ([#367](https://github.com/home-operations/external-dns-unifi-webhook/issues/367)) ([dc04af3](https://github.com/home-operations/external-dns-unifi-webhook/commit/dc04af3a595eaab3909614c425b8481258d451e2))
+* **mise:** update tool oxfmt (0.74.0 → 0.75.0) ([#372](https://github.com/home-operations/external-dns-unifi-webhook/issues/372)) ([5def3b1](https://github.com/home-operations/external-dns-unifi-webhook/commit/5def3b1d81737f2cd0a67c0881b3613d8f067d57))
+* **renovate:** extend the org preset from home-operations/.github ([b264fc3](https://github.com/home-operations/external-dns-unifi-webhook/commit/b264fc33bba19ccd27b4aa85dbb6e351358f04cf))
+
 ## [0.10.14](https://github.com/home-operations/external-dns-unifi-webhook/compare/0.10.13...0.10.14) (2026-10-21)
 
 

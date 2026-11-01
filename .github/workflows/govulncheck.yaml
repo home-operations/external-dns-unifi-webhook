@@ -1,0 +1,32 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Go Vulncheck
+
+on:
+  schedule:
+    - cron: 30 2 * * *
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  go-vulncheck:
+    name: Go Vulncheck
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Mise
+        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        with:
+          experimental: true
+          install_args: --locked
+
+      - name: Run govulncheck
+        run: mise run vulncheck

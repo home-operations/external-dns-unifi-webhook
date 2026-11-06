@@ -41,19 +41,19 @@ func newHTTPTransport(cfg *Config) (*http.Transport, error) {
 		}
 		tlsCfg.RootCAs = pool
 		if cfg.SkipTLSVerify {
-			slog.Warn("UNIFI_CA_CERT is set; ignoring UNIFI_SKIP_TLS_VERIFY")
+			slog.Warn("UNIFI_CA_CERT is set. The client ignores UNIFI_SKIP_TLS_VERIFY")
 		}
 	case cfg.SkipTLSVerify && cfg.isCloud():
 		// The cloud connector terminates at api.ui.com, which presents a
-		// publicly-trusted certificate. Skipping verification there would
-		// expose the API key to a trivial MITM, so we never honour it.
-		slog.Warn("ignoring UNIFI_SKIP_TLS_VERIFY for the cloud connector; api.ui.com presents a publicly-trusted certificate")
+		// publicly-trusted certificate. A skipped verification there exposes
+		// the API key to a trivial MITM, so we never honor the setting.
+		slog.Warn("The client ignores UNIFI_SKIP_TLS_VERIFY for the cloud connector. api.ui.com presents a publicly-trusted certificate")
 	case cfg.SkipTLSVerify:
-		// The other branches warn when they *override* the operator's setting;
-		// this one warns because verification is genuinely off (the default, for
-		// self-signed controllers) — operators should see that in the log and
-		// know UNIFI_CA_CERT is the way to keep TLS verified.
-		slog.Warn("TLS certificate verification is disabled (UNIFI_SKIP_TLS_VERIFY); set UNIFI_CA_CERT to verify a self-signed controller")
+		// The other branches warn when they override the operator's setting.
+		// This one warns because verification is off (the default, for
+		// self-signed controllers). Operators must see that in the log and
+		// know that UNIFI_CA_CERT keeps TLS verified.
+		slog.Warn("TLS certificate verification is disabled (UNIFI_SKIP_TLS_VERIFY). Set UNIFI_CA_CERT to verify a self-signed controller")
 		//nolint:gosec // Explicit opt-in via UNIFI_SKIP_TLS_VERIFY for self-signed controllers.
 		tlsCfg.InsecureSkipVerify = true
 	}
@@ -73,7 +73,7 @@ func newHTTPTransport(cfg *Config) (*http.Transport, error) {
 }
 
 // doRequest issues an HTTP request and applies exponential backoff retries
-// on 5xx and 429 responses (honouring Retry-After when present). body is the
+// on 5xx and 429 responses (it honors Retry-After when present). body is the
 // raw JSON payload (nil for GET/DELETE) — it is re-read on every retry
 // attempt so the caller does not need a rewindable reader.
 func (c *httpClient) doRequest(ctx context.Context, method, path string, body []byte) (*http.Response, error) {
@@ -154,17 +154,19 @@ func (c *httpClient) doOnce(ctx context.Context, method, path string, body []byt
 	return resp, nil
 }
 
-// retryAfter returns whether a request should be retried and how long to wait.
+// retryAfter returns whether the client must retry a request and how long to
+// wait.
 //
-// 429 is retried for any method — the server signals it rejected the request
-// before processing, so re-sending is safe. 5xx and network errors are retried
-// only for idempotent methods (GET/DELETE): a POST that creates a DNS record
-// may have been committed before the controller returned a 5xx or the
-// connection dropped, so blindly re-sending it could create a duplicate record.
-// A non-retried create still converges — external-dns retries the whole
-// reconcile on its next sync — without that duplication risk. 429 honours the
-// server-supplied Retry-After header (clamped to RetryMaxDelay); the rest use
-// exponential backoff with jitter.
+// The client retries a 429 for any method. The server signals that it rejected
+// the request before it processed it, so a second send is safe. The client
+// retries 5xx responses and network errors only for idempotent methods
+// (GET/DELETE). The controller can commit a POST that creates a DNS record
+// before it returns a 5xx or before the connection drops. A blind second send
+// of that POST can create a duplicate record. A create without a retry still
+// converges, because external-dns retries the whole reconcile on its next
+// sync. For a 429, the client honors the Retry-After header from the server,
+// clamped to RetryMaxDelay. The other cases use exponential backoff with
+// jitter.
 func (c *httpClient) retryAfter(method string, resp *http.Response, err error, attempt int) (bool, time.Duration) {
 	idempotent := method == http.MethodGet || method == http.MethodDelete
 
@@ -232,7 +234,7 @@ func (c *httpClient) backoff(attempt int, hint time.Duration) time.Duration {
 // after each attempt except the last, so there are at most RetryAttempts-1
 // waits. Every individual wait is capped at RetryMaxDelay by backoff(), and any
 // wait can be driven all the way up to that cap by a server Retry-After hint on
-// a 429 (backoff honours the hint as a floor, then clamps to RetryMaxDelay). So
+// a 429 (backoff honors the hint as a floor, then clamps to RetryMaxDelay). So
 // the tight, hint-safe upper bound is simply (RetryAttempts-1) * RetryMaxDelay —
 // the exponential schedule only ever produces shorter waits, never longer. Used
 // to size the startup site-resolution timeout: a fixed cap that ignores this

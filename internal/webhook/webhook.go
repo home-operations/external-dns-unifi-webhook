@@ -171,10 +171,10 @@ func validateMediaHeader(
 }
 
 // decodeBody decodes the JSON request body into T. On failure it writes the
-// appropriate error response — 413 when the configured body-size limit was
-// exceeded, 400 otherwise (counting the JSON error against route's endpoint
-// label) — and returns ok=false so the caller can simply return. It centralises
-// the decode handling shared by ApplyChanges and AdjustEndpoints.
+// error response and returns ok=false so the caller can return. The response
+// is 413 when the body exceeds the configured size limit. Otherwise it is 400,
+// and the JSON error counts against the endpoint label of route. ApplyChanges
+// and AdjustEndpoints share this decode handling.
 func decodeBody[T any](w http.ResponseWriter, r *http.Request, route string) (T, bool) {
 	var v T
 	if err := json.NewDecoder(r.Body).Decode(&v); err != nil {

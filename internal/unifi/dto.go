@@ -3,58 +3,40 @@ package unifi
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"sigs.k8s.io/external-dns/endpoint"
 )
 
-// errSRVConversion marks errors that originate in SRV name or target parsing.
+// errSRVConversion marks errors that originate in SRV target parsing.
 // CreateEndpoint matches it with errors.Is to attribute the SRV-specific
 // parsing metric, decoupled from the human-readable DataType strings.
 var errSRVConversion = errors.New("SRV conversion")
 
-// UniFi Integration API discriminator values for /dns/policies entries.
-const (
-	policyTypeA       = "A_RECORD"
-	policyTypeAAAA    = "AAAA_RECORD"
-	policyTypeCNAME   = "CNAME_RECORD"
-	policyTypeMX      = "MX_RECORD"
-	policyTypeTXT     = "TXT_RECORD"
-	policyTypeSRV     = "SRV_RECORD"
-	policyTypeForward = "FORWARD_DOMAIN"
-)
-
-// Per-spec TTL ceilings (in seconds).
+// TTL ceilings (in seconds) the controller enforces per record type.
 const (
 	ttlMaxA     = 86400
 	ttlMaxAAAA  = 86400
 	ttlMaxCNAME = 604800
 )
 
-// dnsPolicyEnvelope is the wire shape for DNS Policies. Every per-type field
-// is optional and omitempty — discrimination is by Type.
+// staticDNSRecord is the wire shape of a /static-dns entry. Every record type
+// shares the same flat object; the per-type extras (ttl, priority, weight,
+// port) are pointers with omitempty because the controller rejects a field it
+// does not expect for the given record_type (ttl on TXT/MX/SRV, priority on
+// A, and so on).
 //
 //nolint:tagliatelle // UniFi API field names cannot be changed
-type dnsPolicyEnvelope struct {
-	ID      string `json:"id,omitempty"`
-	Type    string `json:"type"`
-	Enabled bool   `json:"enabled"`
-	Domain  string `json:"domain,omitempty"`
+type staticDNSRecord struct {
+	ID         string `json:"_id,omitempty"`
+	Enabled    bool   `json:"enabled"`
+	Key        string `json:"key"`
+	RecordType string `json:"record_type"`
+	Value      string `json:"value"`
 
-	IPv4Address      string `json:"ipv4Address,omitempty"`
-	IPv6Address      string `json:"ipv6Address,omitempty"`
-	TargetDomain     string `json:"targetDomain,omitempty"`
-	MailServerDomain string `json:"mailServerDomain,omitempty"`
-	Text             string `json:"text,omitempty"`
-	ServerDomain     string `json:"serverDomain,omitempty"`
-	Service          string `json:"service,omitempty"`
-	Protocol         string `json:"protocol,omitempty"`
-	IPAddress        string `json:"ipAddress,omitempty"`
-
-	Port       *int `json:"port,omitempty"`
-	Priority   *int `json:"priority,omitempty"`
-	Weight     *int `json:"weight,omitempty"`
-	TTLSeconds *int `json:"ttlSeconds,omitempty"`
+	TTL      *int `json:"ttl,omitempty"`
+	Port     *int `json:"port,omitempty"`
+	Priority *int `json:"priority,omitempty"`
+	Weight   *int `json:"weight,omitempty"`
 }
 
 // apiPage is the paginated list envelope the Integration API returns for its
@@ -67,9 +49,6 @@ type apiPage[T any] struct {
 	Data       []T `json:"data"`
 }
 
-// dnsPolicyPage is the envelope returned by GET /dns/policies.
-type dnsPolicyPage = apiPage[dnsPolicyEnvelope]
-
 // sitePage is the envelope returned by GET /sites.
 type sitePage = apiPage[siteEntry]
 
@@ -80,150 +59,94 @@ type siteEntry struct {
 	Name              string `json:"name"`
 }
 
-// toDNSRecord converts a wire envelope into the internal DNSRecord shape.
-// ok=false means the envelope should be skipped: a disabled policy (not serving
-// DNS), a FORWARD_DOMAIN entry, or an unknown discriminator value — none of
-// which we pretend to manage.
+// toDNSRecord converts a wire record into the internal DNSRecord shape.
+// ok=false means the record should be skipped: a disabled record (not serving
+// DNS) or a record type we don't manage.
 //
-// Disabled policies are skipped rather than reported because external-dns has
+// Disabled records are skipped rather than reported because external-dns has
 // no "disabled" concept; surfacing one would make external-dns believe a parked
 // record is live. Treating it as not-present lets external-dns re-create the
 // record (enabled) if it is still in the desired set, and otherwise leave it
 // alone. See #221.
-func toDNSRecord(env dnsPolicyEnvelope) (DNSRecord, bool) {
-	if !env.Enabled {
+func toDNSRecord(rec staticDNSRecord) (DNSRecord, bool) {
+	if !rec.Enabled {
 		return DNSRecord{}, false
 	}
 
 	r := DNSRecord{
-		ID:  env.ID,
-		Key: env.Domain,
+		ID:         rec.ID,
+		Key:        rec.Key,
+		RecordType: rec.RecordType,
 	}
-	if env.TTLSeconds != nil {
-		r.TTL = endpoint.TTL(*env.TTLSeconds)
+	if rec.TTL != nil {
+		r.TTL = endpoint.TTL(*rec.TTL)
 	}
 
-	switch env.Type {
-	case policyTypeA:
-		r.RecordType = recordTypeA
-		r.Value = env.IPv4Address
-	case policyTypeAAAA:
-		r.RecordType = recordTypeAAAA
-		r.Value = env.IPv6Address
-	case policyTypeCNAME:
-		r.RecordType = recordTypeCNAME
-		r.Value = env.TargetDomain
-	case policyTypeTXT:
-		r.RecordType = recordTypeTXT
-		r.Value = env.Text
-	case policyTypeMX:
-		r.RecordType = recordTypeMX
-		r.Value = formatMXValue(env.Priority, env.MailServerDomain)
-	case policyTypeSRV:
-		r.RecordType = recordTypeSRV
-		// External-DNS expresses SRV names as _service._proto.domain.
-		r.Key = joinSRVName(env.Service, env.Protocol, env.Domain)
-		r.Value = formatSRVValue(env.Priority, env.Weight, env.Port, env.ServerDomain)
+	switch rec.RecordType {
+	case recordTypeA, recordTypeAAAA, recordTypeCNAME, recordTypeTXT:
+		r.Value = rec.Value
+	case recordTypeMX:
+		r.Value = formatMXValue(rec.Priority, rec.Value)
+	case recordTypeSRV:
+		r.Value = formatSRVValue(rec.Priority, rec.Weight, rec.Port, rec.Value)
 	default:
-		// FORWARD_DOMAIN and anything else we don't manage.
 		return DNSRecord{}, false
 	}
 
 	return r, true
 }
 
-// fromDNSRecord converts an internal DNSRecord into a wire envelope ready for
-// POST /dns/policies. TTL is clamped per-type to the spec's documented maxima.
-func fromDNSRecord(r DNSRecord) (dnsPolicyEnvelope, error) {
-	env := dnsPolicyEnvelope{
+// fromDNSRecord converts an internal DNSRecord into a wire record ready for
+// POST /static-dns. TTL is clamped per-type to the controller's maxima.
+func fromDNSRecord(r DNSRecord) (staticDNSRecord, error) {
+	rec := staticDNSRecord{
 		// Records external-dns asks us to write are always live; "disabled" is
 		// a manual UI state we deliberately don't model (see toDNSRecord, #221).
-		Enabled: true,
-		Domain:  r.Key,
+		Enabled:    true,
+		Key:        r.Key,
+		RecordType: r.RecordType,
+		Value:      r.Value,
 	}
 
 	switch r.RecordType {
 	case recordTypeA:
-		env.Type = policyTypeA
-		env.IPv4Address = r.Value
-		env.TTLSeconds = new(clampTTL(int(r.TTL), ttlMaxA))
+		rec.TTL = new(clampTTL(int(r.TTL), ttlMaxA))
 	case recordTypeAAAA:
-		env.Type = policyTypeAAAA
-		env.IPv6Address = r.Value
-		env.TTLSeconds = new(clampTTL(int(r.TTL), ttlMaxAAAA))
+		rec.TTL = new(clampTTL(int(r.TTL), ttlMaxAAAA))
 	case recordTypeCNAME:
-		env.Type = policyTypeCNAME
-		env.TargetDomain = r.Value
-		env.TTLSeconds = new(clampTTL(int(r.TTL), ttlMaxCNAME))
-	// TXT/MX/SRV deliberately send no TTLSeconds: the Integration API manages
-	// their TTL itself and ignores any value. AdjustEndpoints clears the TTL
-	// from the desired set so external-dns doesn't churn over it. See #229.
+		rec.TTL = new(clampTTL(int(r.TTL), ttlMaxCNAME))
+	// TXT/MX/SRV deliberately send no ttl: the controller manages their TTL
+	// itself and rejects the field. AdjustEndpoints clears the TTL from the
+	// desired set so external-dns doesn't churn over it. See #229.
 	case recordTypeTXT:
-		env.Type = policyTypeTXT
-		env.Text = r.Value
 	case recordTypeMX:
-		env.Type = policyTypeMX
 		prio, mail, err := parseMXValue(r.Value)
 		if err != nil {
-			return dnsPolicyEnvelope{}, err
+			return staticDNSRecord{}, err
 		}
-		env.Priority = &prio
-		env.MailServerDomain = mail
+		rec.Priority = &prio
+		rec.Value = mail
 	case recordTypeSRV:
-		env.Type = policyTypeSRV
-		service, protocol, domain, err := splitSRVName(r.Key)
-		if err != nil {
-			return dnsPolicyEnvelope{}, err
-		}
-		env.Domain = domain
-		env.Service = service
-		env.Protocol = protocol
-
 		prio, weight, port, server, err := parseSRVValue(r.Value)
 		if err != nil {
-			return dnsPolicyEnvelope{}, err
+			return staticDNSRecord{}, err
 		}
-		env.Priority = &prio
-		env.Weight = &weight
-		env.Port = &port
-		env.ServerDomain = server
+		rec.Priority = &prio
+		rec.Weight = &weight
+		rec.Port = &port
+		rec.Value = server
 	default:
-		return dnsPolicyEnvelope{}, NewDataError("convert", "DNS record",
+		return staticDNSRecord{}, NewDataError("convert", "DNS record",
 			fmt.Errorf("unsupported record type %q", r.RecordType))
 	}
 
-	return env, nil
+	return rec, nil
 }
 
 // clampTTL clips ttl into [0, max]. A zero TTL means "use controller default"
 // to external-dns, so we don't substitute anything for unset.
 func clampTTL(ttl, maxSecs int) int {
 	return min(max(ttl, 0), maxSecs)
-}
-
-// joinSRVName reassembles the external-dns SRV FQDN from the per-field
-// representation. Service and Protocol already carry their leading underscore
-// in the API ("_ldap", "_tcp"), so we just join with dots.
-func joinSRVName(service, protocol, domain string) string {
-	if service == "" || protocol == "" {
-		return domain
-	}
-
-	return fmt.Sprintf("%s.%s.%s", service, protocol, domain)
-}
-
-// splitSRVName parses "_service._proto.domain.example.com" into its three
-// pieces. Returns an error if the FQDN lacks the two leading "_xxx" labels.
-func splitSRVName(name string) (service, protocol, domain string, err error) {
-	parts := strings.SplitN(name, ".", 3)
-	if len(parts) < 3 ||
-		!strings.HasPrefix(parts[0], "_") ||
-		!strings.HasPrefix(parts[1], "_") {
-		return "", "", "", NewDataError("parse", "SRV record name",
-			fmt.Errorf("%w: expected _service._proto.domain, got %q", errSRVConversion, name))
-	}
-
-	return parts[0], parts[1], parts[2], nil
 }
 
 // formatSRVValue renders the external-dns SRV target convention. Nil pointers

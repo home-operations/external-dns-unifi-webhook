@@ -270,8 +270,8 @@ func parseRetryAfter(value string) time.Duration {
 // collapse the trailing segment.
 func opLabel(path string) string {
 	switch {
-	case strings.Contains(path, "/dns/policies"):
-		return "dns_policies"
+	case strings.Contains(path, "/static-dns"):
+		return "static_dns"
 	case strings.Contains(path, "/sites"):
 		return "sites"
 	}

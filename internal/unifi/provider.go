@@ -63,8 +63,8 @@ func NewUnifiProvider(config *Config) (provider.Provider, error) {
 }
 
 // recordTypesWithoutCustomTTL are the record types whose TTL the UniFi
-// Integration API manages itself: it ignores any ttlSeconds sent for them, and
-// only A/AAAA/CNAME honour a custom value. fromDNSRecord already omits the TTL
+// controller manages itself: it rejects a ttl sent for them, and only
+// A/AAAA/CNAME honour a custom value. fromDNSRecord already omits the TTL
 // on writes for these; AdjustEndpoints clears it from the desired set so it
 // can't drive perpetual reconcile churn. See #229.
 var recordTypesWithoutCustomTTL = map[string]struct{}{
@@ -74,8 +74,8 @@ var recordTypesWithoutCustomTTL = map[string]struct{}{
 }
 
 // AdjustEndpoints canonicalises the desired endpoints to what the UniFi
-// controller can actually represent. The Integration API manages the TTL for
-// TXT, MX, and SRV records itself and ignores any value sent for them. If a
+// controller can actually represent. The controller manages the TTL for
+// TXT, MX, and SRV records itself and rejects any value sent for them. If a
 // user-set TTL is left on such an endpoint, external-dns compares it against
 // the controller-managed TTL on every reconcile, never reaches equality, and
 // churns delete+create forever. Clearing the TTL here makes the desired state

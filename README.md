@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/github/license/home-operations/external-dns-unifi-webhook)](LICENSE)
 [![Discord](https://img.shields.io/discord/673534664354430999?label=discord&logo=discord&logoColor=white&color=blue)](https://discord.gg/home-operations)
 
-A webhook provider for [ExternalDNS](https://github.com/kubernetes-sigs/external-dns) that manages DNS records in a UniFi Network controller. ExternalDNS keeps DNS in sync with your Kubernetes Ingresses and Services; this provider applies those records to UniFi's built-in DNS via the Network [Integration API](https://developer.ui.com/network/).
+A webhook provider for [ExternalDNS](https://github.com/kubernetes-sigs/external-dns) that manages DNS records in a UniFi Network controller. ExternalDNS keeps DNS in sync with your Kubernetes Ingresses and Services; this provider applies those records to UniFi's built-in DNS through the Network application's `static-dns` API.
 
 ## Requirements
 
@@ -17,7 +17,7 @@ A webhook provider for [ExternalDNS](https://github.com/kubernetes-sigs/external
 
 ## How it works
 
-The provider runs as a sidecar alongside the ExternalDNS controller. It speaks the ExternalDNS webhook protocol on one side and the UniFi Network Integration API (`/proxy/network/integration/v1/...`, specifically the **DNS Policies** endpoints) on the other. It reaches UniFi one of two ways:
+The provider runs as a sidecar alongside the ExternalDNS controller. It speaks the ExternalDNS webhook protocol on one side and the UniFi Network API on the other: records go through `/proxy/network/v2/api/site/{site}/static-dns`, and the site name is resolved once at startup through the [Integration API](https://developer.ui.com/network/)'s `/proxy/network/integration/v1/sites` endpoint. The `static-dns` endpoints are not documented by Ubiquiti, but unlike the Integration API's DNS Policies endpoints they accept names whose labels start with an underscore, such as the RFC 9462 DDR name `_dns.resolver.arpa`. It reaches UniFi one of two ways:
 
 - **Local** (default) — connects directly to the controller on your network.
 - **Cloud connector** — proxies through `api.ui.com` for consoles you can't reach on the LAN. See [Cloud connector](#cloud-connector).
@@ -124,7 +124,7 @@ See the [chart values](https://github.com/kubernetes-sigs/external-dns/blob/mast
 | --------------------------- | ------------------------------------------------------------------------------------- | --------- |
 | `UNIFI_HOST`                | Controller address, or `https://api.ui.com` for the cloud connector (**required**).   | —         |
 | `UNIFI_API_KEY`             | API key used to authenticate (**required**). Local and cloud keys differ — see below. | —         |
-| `UNIFI_SITE`                | Site name (e.g. `default`) or site UUID. Resolved to the API's UUID at startup.       | `default` |
+| `UNIFI_SITE`                | Site name (e.g. `default`) or site UUID. Resolved to the site name at startup.        | `default` |
 | `UNIFI_CONSOLE_ID`          | Console ID. Setting this routes requests through the `api.ui.com` cloud connector.    | —         |
 | `UNIFI_SKIP_TLS_VERIFY`     | Skip TLS verification. Ignored in cloud mode.                                         | `true`    |
 | `UNIFI_CA_CERT`             | Path to a PEM bundle of extra trusted CAs (alternative to skipping verification).     | —         |
@@ -138,16 +138,17 @@ See the [chart values](https://github.com/kubernetes-sigs/external-dns/blob/mast
 
 ExternalDNS gives each call to the webhook a fixed budget: `--webhook-provider-read-timeout` plus `--webhook-provider-write-timeout` (5s + 10s by default). If the webhook has not answered by then, ExternalDNS treats it as a fatal error and exits; an HTTP 5xx from the webhook is only logged as a soft error. Without a per-attempt timeout, a controller that accepts the connection and then stalls keeps the webhook waiting past that budget, and ExternalDNS restarts instead of retrying on the next sync.
 
-Set `UNIFI_REQUEST_TIMEOUT` to bound each attempt. An attempt that times out before the controller answers is retried like any other network error (for `GET` and `DELETE`); a stall after the response headers fails without a retry. Either way, once the request gives up the webhook answers `500`. Size it so `UNIFI_RETRY_ATTEMPTS × UNIFI_REQUEST_TIMEOUT` plus the backoff between attempts stays below the ExternalDNS budget. With the defaults (3 attempts, 500ms initial delay, up to 50% jitter) a `4s` timeout gives a worst case of about 14.3s, under the 15s default. `/records` fetches pages of up to 200 records sequentially, each with its own attempts, so with more than 200 records the worst case adds up across pages. Alternatively, raise the ExternalDNS timeouts; keep their sum below `SERVER_WRITE_TIMEOUT`.
+Set `UNIFI_REQUEST_TIMEOUT` to bound each attempt. An attempt that times out before the controller answers is retried like any other network error (for `GET` and `DELETE`); a stall after the response headers fails without a retry. Either way, once the request gives up the webhook answers `500`. Size it so `UNIFI_RETRY_ATTEMPTS × UNIFI_REQUEST_TIMEOUT` plus the backoff between attempts stays below the ExternalDNS budget. With the defaults (3 attempts, 500ms initial delay, up to 50% jitter) a `4s` timeout gives a worst case of about 14.3s, under the 15s default. Alternatively, raise the ExternalDNS timeouts; keep their sum below `SERVER_WRITE_TIMEOUT`.
 
 #### Cloud connector
 
-To manage a remote console without exposing the controller on your LAN, set `UNIFI_CONSOLE_ID` and point `UNIFI_HOST` at `https://api.ui.com`. Requests are then proxied through `/v1/connector/consoles/{consoleId}/proxy/network/integration/v1/...`. The Integration API surface is identical to a local connection — only the routing prefix changes.
+To manage a remote console without exposing the controller on your LAN, set `UNIFI_CONSOLE_ID` and point `UNIFI_HOST` at `https://api.ui.com`. Requests are then proxied through `/v1/connector/consoles/{consoleId}/proxy/network/...`. The API surface is identical to a local connection — only the routing prefix changes.
 
 - Use an **account-level** API key from the [UniFi Site Manager](https://unifi.ui.com), not a per-console local key.
 - Find your console ID via the Site Manager API (`GET https://api.ui.com/v1/hosts`) or the console URL in [unifi.ui.com](https://unifi.ui.com).
 - `UNIFI_SKIP_TLS_VERIFY` is ignored — `api.ui.com` presents a publicly-trusted certificate, and skipping verification would expose your API key.
 - Reconciliation depends on Ubiquiti's API availability and rate limits. The built-in backoff handles `429`s, but a local connection is preferable when reachable.
+- The connector forwards the `static-dns` paths today, but Ubiquiti has stated that it is meant to reach only each application's public integration API, and on 2026-11-05 it refused those paths for a few hours. If that becomes permanent, cloud mode stops working until this webhook adapts.
 
 #### Domain filtering
 
@@ -186,14 +187,16 @@ Configure `--domain-filter` (and its variants) on the **ExternalDNS controller**
 
 ## Upgrading
 
-Migrating to the UniFi Network 10.3.58 [Integration API](https://developer.ui.com/network/) introduced breaking changes:
+The move to UniFi Network 10.3.58 introduced breaking changes:
 
-| Setting                                                                                            | Change                                                                                                                                                                                  |
-| -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `UNIFI_EXTERNAL_CONTROLLER`                                                                        | **Removed.** Point `UNIFI_HOST` at the controller directly, or use the [cloud connector](#cloud-connector) for remote consoles.                                                         |
-| `DOMAIN_FILTER`, `EXCLUDE_DOMAIN_FILTER`, `REGEXP_DOMAIN_FILTER`, `REGEXP_DOMAIN_FILTER_EXCLUSION` | **Removed.** Configure `--domain-filter` on the ExternalDNS controller instead (see [Domain filtering](#domain-filtering)).                                                             |
-| `LOG_FORMAT=test`                                                                                  | **Renamed** to `LOG_FORMAT=text`.                                                                                                                                                       |
-| API endpoint                                                                                       | Moved from the undocumented `/proxy/network/v2/api/site/{site}/static-dns/*` to the official `/proxy/network/integration/v1/sites/{siteId}/dns/policies/*` (requires Network 10.3.58+). |
+| Setting                                                                                            | Change                                                                                                                          |
+| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `UNIFI_EXTERNAL_CONTROLLER`                                                                        | **Removed.** Point `UNIFI_HOST` at the controller directly, or use the [cloud connector](#cloud-connector) for remote consoles. |
+| `DOMAIN_FILTER`, `EXCLUDE_DOMAIN_FILTER`, `REGEXP_DOMAIN_FILTER`, `REGEXP_DOMAIN_FILTER_EXCLUSION` | **Removed.** Configure `--domain-filter` on the ExternalDNS controller instead (see [Domain filtering](#domain-filtering)).     |
+| `LOG_FORMAT=test`                                                                                  | **Renamed** to `LOG_FORMAT=text`.                                                                                               |
+| Site lookup                                                                                        | `UNIFI_SITE` is resolved through the official `/proxy/network/integration/v1/sites` endpoint (requires Network 10.3.58+).       |
+
+Moving records to the `static-dns` endpoints renamed the `operation` label value on `externaldns_webhook_unifi_retries_total` and `externaldns_webhook_unifi_rate_limits_total` from `dns_policies` to `static_dns`. Update any alert or dashboard selectors that match on the old value.
 
 ## Community
 

@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.11.0](https://github.com/home-operations/external-dns-unifi-webhook/compare/0.10.15...0.11.0) (2026-11-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* **unifi:** UNIFI_SITE must be the site name shown in the console URL (/manage/site/<name>/). A site UUID is rejected at startup. The minimum UniFi Network version drops to 9.0.0.
+
+### Features
+
+* **unifi:** manage records through the v2 static-dns API ([#384](https://github.com/home-operations/external-dns-unifi-webhook/issues/384)) ([6ff1495](https://github.com/home-operations/external-dns-unifi-webhook/commit/6ff1495deb0a24716422b78343e7cfcb2fcd476d)), closes [#379](https://github.com/home-operations/external-dns-unifi-webhook/issues/379)
+* **unifi:** take UNIFI_SITE as the site name and drop the Integration API ([#387](https://github.com/home-operations/external-dns-unifi-webhook/issues/387)) ([d41f91e](https://github.com/home-operations/external-dns-unifi-webhook/commit/d41f91e08f4b88962846afe82556340362569353))
+
+
+### Documentation
+
+* rewrite prose in plain English ([#385](https://github.com/home-operations/external-dns-unifi-webhook/issues/385)) ([f5842dd](https://github.com/home-operations/external-dns-unifi-webhook/commit/f5842dd856a5d416bf91885362ae24c5a8d1c1b2))
+
+
+### Continuous Integration
+
+* run checks on pull requests against any base branch ([#388](https://github.com/home-operations/external-dns-unifi-webhook/issues/388)) ([d870933](https://github.com/home-operations/external-dns-unifi-webhook/commit/d87093363cb81fa6687604483e0f5fb2d1dabadf))
+
+
+### Miscellaneous Chores
+
+* **github-action:** update github-actions ([#376](https://github.com/home-operations/external-dns-unifi-webhook/issues/376)) ([8086334](https://github.com/home-operations/external-dns-unifi-webhook/commit/80863346afb5479de4ed189a9407ccab143592a7))
+* **mise:** update tool zizmor (1.31.1 → 1.32.0) ([#377](https://github.com/home-operations/external-dns-unifi-webhook/issues/377)) ([a76de9e](https://github.com/home-operations/external-dns-unifi-webhook/commit/a76de9e6aedb28b579640ee5f2617923a3363a18))
+
 ## [0.10.15](https://github.com/home-operations/external-dns-unifi-webhook/compare/0.10.14...0.10.15) (2026-11-03)
 
 

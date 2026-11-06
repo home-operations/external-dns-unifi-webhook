@@ -9,7 +9,7 @@ import (
 func TestToDNSRecord_PerType(t *testing.T) {
 	tests := []struct {
 		name      string
-		env       dnsPolicyEnvelope
+		rec       staticDNSRecord
 		wantOK    bool
 		wantKey   string
 		wantValue string
@@ -18,7 +18,7 @@ func TestToDNSRecord_PerType(t *testing.T) {
 	}{
 		{
 			name:      "A record",
-			env:       envA("a1", "host.example.com", "192.0.2.1", 300),
+			rec:       recA("a1", "host.example.com", "192.0.2.1", 300),
 			wantOK:    true,
 			wantKey:   "host.example.com",
 			wantValue: "192.0.2.1",
@@ -26,12 +26,8 @@ func TestToDNSRecord_PerType(t *testing.T) {
 			wantTTL:   300,
 		},
 		{
-			name: "AAAA record",
-			env: dnsPolicyEnvelope{
-				Type: policyTypeAAAA, Enabled: true,
-				Domain: "v6.example.com", IPv6Address: "2001:db8::1",
-				TTLSeconds: new(60),
-			},
+			name:      "AAAA record",
+			rec:       recAAAA("a2", "v6.example.com", "2001:db8::1", 60),
 			wantOK:    true,
 			wantKey:   "v6.example.com",
 			wantValue: "2001:db8::1",
@@ -40,7 +36,7 @@ func TestToDNSRecord_PerType(t *testing.T) {
 		},
 		{
 			name:      "CNAME record",
-			env:       envCNAME("c1", "alias.example.com", "target.example.com", 120),
+			rec:       recCNAME("c1", "alias.example.com", "target.example.com", 120),
 			wantOK:    true,
 			wantKey:   "alias.example.com",
 			wantValue: "target.example.com",
@@ -48,8 +44,16 @@ func TestToDNSRecord_PerType(t *testing.T) {
 			wantTTL:   120,
 		},
 		{
+			name:      "CNAME with a leading-underscore label",
+			rec:       recCNAME("c2", "_dns.resolver.arpa", "unifi.example.com", 0),
+			wantOK:    true,
+			wantKey:   "_dns.resolver.arpa",
+			wantValue: "unifi.example.com",
+			wantType:  recordTypeCNAME,
+		},
+		{
 			name:      "TXT has no TTL field on the wire",
-			env:       envTXT("t1", "txt.example.com", "v=spf1 ~all"),
+			rec:       recTXT("t1", "txt.example.com", "v=spf1 ~all"),
 			wantOK:    true,
 			wantKey:   "txt.example.com",
 			wantValue: "v=spf1 ~all",
@@ -57,9 +61,9 @@ func TestToDNSRecord_PerType(t *testing.T) {
 		},
 		{
 			name: "MX renders as 'priority host'",
-			env: dnsPolicyEnvelope{
-				Type: policyTypeMX, Enabled: true,
-				Domain: "example.com", MailServerDomain: "mail.example.com",
+			rec: staticDNSRecord{
+				RecordType: recordTypeMX, Enabled: true,
+				Key: "example.com", Value: "mail.example.com",
 				Priority: new(10),
 			},
 			wantOK:    true,
@@ -68,34 +72,31 @@ func TestToDNSRecord_PerType(t *testing.T) {
 			wantType:  recordTypeMX,
 		},
 		{
-			name:      "SRV reassembled into _service._proto.domain and target",
-			env:       envSRV("s1", "_ldap", "_tcp", "example.com", "ldap.example.com", 10, 20, 389),
+			name:      "SRV renders as 'priority weight port target'",
+			rec:       recSRV("s1", "_ldap._tcp.example.com", "ldap.example.com", 10, 20, 389),
 			wantOK:    true,
 			wantKey:   "_ldap._tcp.example.com",
 			wantValue: "10 20 389 ldap.example.com",
 			wantType:  recordTypeSRV,
 		},
 		{
-			name: "FORWARD_DOMAIN is dropped",
-			env: dnsPolicyEnvelope{
-				Type: policyTypeForward, Enabled: true,
-				Domain: "internal.example.com", IPAddress: "10.0.0.53",
-			},
+			name:   "NS is dropped",
+			rec:    staticDNSRecord{RecordType: "NS", Enabled: true, Key: "example.com", Value: "ns1.example.com"},
 			wantOK: false,
 		},
 		{
 			name:   "unknown type is dropped",
-			env:    dnsPolicyEnvelope{Type: "MYSTERY", Enabled: true, Domain: "x"},
+			rec:    staticDNSRecord{RecordType: "MYSTERY", Enabled: true, Key: "x"},
 			wantOK: false,
 		},
 		{
 			// A fully valid A record, but disabled in the UI: must not be
 			// surfaced as a managed record (#221).
 			name: "disabled record is dropped",
-			env: dnsPolicyEnvelope{
-				Type: policyTypeA, Enabled: false,
-				Domain: "parked.example.com", IPv4Address: "192.0.2.9",
-				TTLSeconds: new(300),
+			rec: staticDNSRecord{
+				RecordType: recordTypeA, Enabled: false,
+				Key: "parked.example.com", Value: "192.0.2.9",
+				TTL: new(300),
 			},
 			wantOK: false,
 		},
@@ -103,7 +104,7 @@ func TestToDNSRecord_PerType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, ok := toDNSRecord(tt.env)
+			got, ok := toDNSRecord(tt.rec)
 			if ok != tt.wantOK {
 				t.Fatalf("ok = %v, want %v", ok, tt.wantOK)
 			}
@@ -127,71 +128,96 @@ func TestToDNSRecord_PerType(t *testing.T) {
 }
 
 func TestFromDNSRecord_PerType(t *testing.T) {
-	tests := []struct {
-		name    string
-		in      DNSRecord
-		check   func(*testing.T, dnsPolicyEnvelope)
-		wantErr bool
-	}{
+	tests := []fromDNSRecordCase{
 		{
 			name: "A record",
 			in:   DNSRecord{Key: "host.example.com", RecordType: recordTypeA, Value: "192.0.2.1", TTL: 300},
-			check: func(t *testing.T, env dnsPolicyEnvelope) {
+			check: func(t *testing.T, rec staticDNSRecord) {
 				t.Helper()
-				if env.Type != policyTypeA {
-					t.Errorf("Type = %q", env.Type)
+				if rec.RecordType != recordTypeA {
+					t.Errorf("RecordType = %q", rec.RecordType)
 				}
-				if env.IPv4Address != "192.0.2.1" {
-					t.Errorf("IPv4Address = %q", env.IPv4Address)
+				if rec.Value != "192.0.2.1" {
+					t.Errorf("Value = %q", rec.Value)
 				}
-				if env.TTLSeconds == nil || *env.TTLSeconds != 300 {
-					t.Errorf("TTLSeconds = %v", env.TTLSeconds)
+				if rec.TTL == nil || *rec.TTL != 300 {
+					t.Errorf("TTL = %v", rec.TTL)
+				}
+				if rec.Priority != nil || rec.Weight != nil || rec.Port != nil {
+					t.Errorf("A record must not carry SRV/MX fields: %+v", rec)
 				}
 			},
 		},
 		{
 			name: "A TTL clamped at 86400",
 			in:   DNSRecord{Key: "x.example.com", RecordType: recordTypeA, Value: "192.0.2.1", TTL: 999999},
-			check: func(t *testing.T, env dnsPolicyEnvelope) {
+			check: func(t *testing.T, rec staticDNSRecord) {
 				t.Helper()
-				if env.TTLSeconds == nil || *env.TTLSeconds != ttlMaxA {
-					t.Errorf("TTLSeconds = %v, want %d", env.TTLSeconds, ttlMaxA)
+				if rec.TTL == nil || *rec.TTL != ttlMaxA {
+					t.Errorf("TTL = %v, want %d", rec.TTL, ttlMaxA)
 				}
 			},
 		},
 		{
 			name: "CNAME TTL clamped at 604800",
 			in:   DNSRecord{Key: "x.example.com", RecordType: recordTypeCNAME, Value: "y.example.com", TTL: 999999},
-			check: func(t *testing.T, env dnsPolicyEnvelope) {
+			check: func(t *testing.T, rec staticDNSRecord) {
 				t.Helper()
-				if env.TTLSeconds == nil || *env.TTLSeconds != ttlMaxCNAME {
-					t.Errorf("TTLSeconds = %v, want %d", env.TTLSeconds, ttlMaxCNAME)
+				if rec.TTL == nil || *rec.TTL != ttlMaxCNAME {
+					t.Errorf("TTL = %v, want %d", rec.TTL, ttlMaxCNAME)
+				}
+			},
+		},
+		{
+			name: "CNAME keeps a leading-underscore name verbatim",
+			in:   DNSRecord{Key: "_dns.resolver.arpa", RecordType: recordTypeCNAME, Value: "unifi.example.com"},
+			check: func(t *testing.T, rec staticDNSRecord) {
+				t.Helper()
+				if rec.Key != "_dns.resolver.arpa" {
+					t.Errorf("Key = %q", rec.Key)
 				}
 			},
 		},
 		{
 			name: "TXT has no TTL field",
 			in:   DNSRecord{Key: "x.example.com", RecordType: recordTypeTXT, Value: "hi", TTL: 60},
-			check: func(t *testing.T, env dnsPolicyEnvelope) {
+			check: func(t *testing.T, rec staticDNSRecord) {
 				t.Helper()
-				if env.TTLSeconds != nil {
-					t.Errorf("expected no TTLSeconds for TXT, got %d", *env.TTLSeconds)
+				if rec.TTL != nil {
+					t.Errorf("expected no TTL for TXT, got %d", *rec.TTL)
 				}
-				if env.Text != "hi" {
-					t.Errorf("Text = %q", env.Text)
+				if rec.Value != "hi" {
+					t.Errorf("Value = %q", rec.Value)
 				}
 			},
 		},
 		{
+			name:    "unsupported record type errors",
+			in:      DNSRecord{Key: "x", RecordType: "NS", Value: "ns1.example.com"},
+			wantErr: true,
+		},
+	}
+
+	runFromDNSRecordCases(t, tests)
+}
+
+// TestFromDNSRecord_MXSRV covers the two types whose external-dns target is
+// split into separate wire fields.
+func TestFromDNSRecord_MXSRV(t *testing.T) {
+	tests := []fromDNSRecordCase{
+		{
 			name: "MX parses priority and host",
-			in:   DNSRecord{Key: "example.com", RecordType: recordTypeMX, Value: "10 mail.example.com"},
-			check: func(t *testing.T, env dnsPolicyEnvelope) {
+			in:   DNSRecord{Key: "example.com", RecordType: recordTypeMX, Value: "10 mail.example.com", TTL: 60},
+			check: func(t *testing.T, rec staticDNSRecord) {
 				t.Helper()
-				if env.Priority == nil || *env.Priority != 10 {
-					t.Errorf("Priority = %v", env.Priority)
+				if rec.Priority == nil || *rec.Priority != 10 {
+					t.Errorf("Priority = %v", rec.Priority)
 				}
-				if env.MailServerDomain != "mail.example.com" {
-					t.Errorf("MailServerDomain = %q", env.MailServerDomain)
+				if rec.Value != "mail.example.com" {
+					t.Errorf("Value = %q", rec.Value)
+				}
+				if rec.TTL != nil {
+					t.Errorf("expected no TTL for MX, got %d", *rec.TTL)
 				}
 			},
 		},
@@ -201,31 +227,32 @@ func TestFromDNSRecord_PerType(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "SRV splits name and target",
+			name: "SRV splits target into fields",
 			in: DNSRecord{
 				Key: "_ldap._tcp.example.com", RecordType: recordTypeSRV,
-				Value: "10 20 389 ldap.example.com",
+				Value: "10 20 389 ldap.example.com", TTL: 60,
 			},
-			check: func(t *testing.T, env dnsPolicyEnvelope) {
+			check: func(t *testing.T, rec staticDNSRecord) {
 				t.Helper()
-				if env.Service != "_ldap" || env.Protocol != "_tcp" || env.Domain != "example.com" {
-					t.Errorf("split = %q/%q/%q", env.Service, env.Protocol, env.Domain)
+				if rec.Key != "_ldap._tcp.example.com" {
+					t.Errorf("Key = %q", rec.Key)
 				}
-				if env.Priority == nil || *env.Priority != 10 {
-					t.Errorf("Priority = %v", env.Priority)
+				if rec.Priority == nil || *rec.Priority != 10 {
+					t.Errorf("Priority = %v", rec.Priority)
 				}
-				if env.ServerDomain != "ldap.example.com" {
-					t.Errorf("ServerDomain = %q", env.ServerDomain)
+				if rec.Weight == nil || *rec.Weight != 20 {
+					t.Errorf("Weight = %v", rec.Weight)
+				}
+				if rec.Port == nil || *rec.Port != 389 {
+					t.Errorf("Port = %v", rec.Port)
+				}
+				if rec.Value != "ldap.example.com" {
+					t.Errorf("Value = %q", rec.Value)
+				}
+				if rec.TTL != nil {
+					t.Errorf("expected no TTL for SRV, got %d", *rec.TTL)
 				}
 			},
-		},
-		{
-			name: "SRV missing underscored labels errors",
-			in: DNSRecord{
-				Key: "no.underscore.example.com", RecordType: recordTypeSRV,
-				Value: "10 20 389 ldap.example.com",
-			},
-			wantErr: true,
 		},
 		{
 			name: "SRV malformed value errors",
@@ -235,16 +262,23 @@ func TestFromDNSRecord_PerType(t *testing.T) {
 			},
 			wantErr: true,
 		},
-		{
-			name:    "unsupported record type errors",
-			in:      DNSRecord{Key: "x", RecordType: "NS", Value: "ns1.example.com"},
-			wantErr: true,
-		},
 	}
 
+	runFromDNSRecordCases(t, tests)
+}
+
+type fromDNSRecordCase struct {
+	name    string
+	in      DNSRecord
+	check   func(*testing.T, staticDNSRecord)
+	wantErr bool
+}
+
+func runFromDNSRecordCases(t *testing.T, tests []fromDNSRecordCase) {
+	t.Helper()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			env, err := fromDNSRecord(tt.in)
+			rec, err := fromDNSRecord(tt.in)
 			if tt.wantErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -255,11 +289,11 @@ func TestFromDNSRecord_PerType(t *testing.T) {
 			if err != nil {
 				t.Fatalf("fromDNSRecord: %v", err)
 			}
-			if !env.Enabled {
+			if !rec.Enabled {
 				t.Errorf("Enabled = false, want true")
 			}
 			if tt.check != nil {
-				tt.check(t, env)
+				tt.check(t, rec)
 			}
 		})
 	}
@@ -273,12 +307,12 @@ func TestSRVRoundTrip(t *testing.T) {
 		Value: "10 20 389 ldap.example.com",
 	}
 
-	env, err := fromDNSRecord(orig)
+	rec, err := fromDNSRecord(orig)
 	if err != nil {
 		t.Fatalf("fromDNSRecord: %v", err)
 	}
 
-	got, ok := toDNSRecord(env)
+	got, ok := toDNSRecord(rec)
 	if !ok {
 		t.Fatal("toDNSRecord dropped a record it converted from")
 	}
@@ -296,11 +330,6 @@ func TestIsSRVConversionError(t *testing.T) {
 		in   DNSRecord
 		want bool
 	}{
-		{
-			name: "SRV name without underscores",
-			in:   DNSRecord{Key: "no.dots.example.com", RecordType: recordTypeSRV, Value: "10 20 389 host"},
-			want: true,
-		},
 		{
 			name: "SRV value malformed",
 			in:   DNSRecord{Key: "_x._tcp.example.com", RecordType: recordTypeSRV, Value: "bogus"},

@@ -7,9 +7,10 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/home-operations/external-dns-unifi-webhook/internal/metrics"
 	"github.com/prometheus/client_golang/prometheus"
@@ -28,8 +29,8 @@ const (
 )
 
 // newTestClient builds an httpClient pointed at the given test server, with
-// the site UUID already resolved. Real client construction goes through
-// resolveSite; tests skip that by populating siteID directly.
+// the site name already resolved. Real client construction goes through
+// resolveSite; tests skip that by populating siteName directly.
 func newTestClient(srv *httptest.Server) *httpClient {
 	return testClient(srv, &Config{
 		Host:          srv.URL,
@@ -41,17 +42,17 @@ func newTestClient(srv *httptest.Server) *httpClient {
 
 // TestCloudConnectorPath verifies that with a console ID set, every request is
 // routed through the api.ui.com connector prefix while reusing the same
-// Integration API endpoints — the whole point of the cloud support is that
-// only the base URL changes.
+// endpoints — the whole point of the cloud support is that only the base URL
+// changes.
 func TestCloudConnectorPath(t *testing.T) {
-	wantPrefix := "/v1/connector/consoles/" + testConsoleID + "/proxy/network/integration/v1"
+	wantPrefix := "/v1/connector/consoles/" + testConsoleID + "/proxy/network"
 
 	var gotPaths []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPaths = append(gotPaths, r.URL.Path)
 		switch r.Method {
 		case http.MethodGet:
-			_ = json.NewEncoder(w).Encode(pageOf(envA(testDNSID1, testDomain, testIPv4A, 300)))
+			_ = json.NewEncoder(w).Encode(listOf(recA(testDNSID1, testDomain, testIPv4A, 300)))
 		case http.MethodDelete:
 			w.WriteHeader(http.StatusOK)
 		}
@@ -81,67 +82,60 @@ func TestCloudConnectorPath(t *testing.T) {
 			t.Errorf("request path %q does not start with cloud connector prefix %q", p, wantPrefix)
 		}
 	}
-	// Sanity-check the suffix is the same Integration API surface as local.
-	if want := wantPrefix + "/sites/" + testSiteUUID + "/dns/policies/" + testDNSID1; gotPaths[len(gotPaths)-1] != want {
+	// Sanity-check the suffix is the same API surface as local.
+	if want := wantPrefix + "/v2/api/site/" + testSite + "/static-dns/" + testDNSID1; gotPaths[len(gotPaths)-1] != want {
 		t.Errorf("delete path = %q, want %q", gotPaths[len(gotPaths)-1], want)
 	}
 }
 
-// envelope helpers keep test data terse and consistent.
-func envA(id, domain, ip string, ttl int) dnsPolicyEnvelope {
-	return dnsPolicyEnvelope{
-		ID: id, Type: policyTypeA, Enabled: true,
-		Domain: domain, IPv4Address: ip, TTLSeconds: &ttl,
+// record helpers keep test data terse and consistent.
+func recA(id, key, ip string, ttl int) staticDNSRecord {
+	return staticDNSRecord{
+		ID: id, RecordType: recordTypeA, Enabled: true,
+		Key: key, Value: ip, TTL: &ttl,
 	}
 }
 
-func envAAAA(id, domain, ip string, ttl int) dnsPolicyEnvelope {
-	return dnsPolicyEnvelope{
-		ID: id, Type: policyTypeAAAA, Enabled: true,
-		Domain: domain, IPv6Address: ip, TTLSeconds: &ttl,
+func recAAAA(id, key, ip string, ttl int) staticDNSRecord {
+	return staticDNSRecord{
+		ID: id, RecordType: recordTypeAAAA, Enabled: true,
+		Key: key, Value: ip, TTL: &ttl,
 	}
 }
 
-func envCNAME(id, domain, target string, ttl int) dnsPolicyEnvelope {
-	return dnsPolicyEnvelope{
-		ID: id, Type: policyTypeCNAME, Enabled: true,
-		Domain: domain, TargetDomain: target, TTLSeconds: &ttl,
+func recCNAME(id, key, target string, ttl int) staticDNSRecord {
+	return staticDNSRecord{
+		ID: id, RecordType: recordTypeCNAME, Enabled: true,
+		Key: key, Value: target, TTL: &ttl,
 	}
 }
 
-func envTXT(id, domain, text string) dnsPolicyEnvelope {
-	return dnsPolicyEnvelope{
-		ID: id, Type: policyTypeTXT, Enabled: true,
-		Domain: domain, Text: text,
+func recTXT(id, key, text string) staticDNSRecord {
+	return staticDNSRecord{
+		ID: id, RecordType: recordTypeTXT, Enabled: true,
+		Key: key, Value: text,
 	}
 }
 
-func envSRV(id, service, protocol, domain, server string, priority, weight, port int) dnsPolicyEnvelope {
-	return dnsPolicyEnvelope{
-		ID: id, Type: policyTypeSRV, Enabled: true,
-		Domain: domain, Service: service, Protocol: protocol,
-		ServerDomain: server,
-		Priority:     &priority,
-		Weight:       &weight,
-		Port:         &port,
+func recSRV(id, key, server string, priority, weight, port int) staticDNSRecord {
+	return staticDNSRecord{
+		ID: id, RecordType: recordTypeSRV, Enabled: true,
+		Key: key, Value: server,
+		Priority: &priority,
+		Weight:   &weight,
+		Port:     &port,
 	}
 }
 
-func pageOf(envs ...dnsPolicyEnvelope) dnsPolicyPage {
-	return dnsPolicyPage{
-		Offset:     0,
-		Limit:      pageLimit,
-		Count:      len(envs),
-		TotalCount: len(envs),
-		Data:       envs,
-	}
+// listOf is the /static-dns list response: a bare JSON array.
+func listOf(recs ...staticDNSRecord) []staticDNSRecord {
+	return append([]staticDNSRecord{}, recs...)
 }
 
-// TestGetEndpoints exercises the paginated list path against a faked server.
+// TestGetEndpoints exercises the list path against a faked server.
 func TestGetEndpoints(t *testing.T) {
 	srvPriority, srvWeight, srvPort := 10, 20, 8080
-	srvEnv := envSRV("srv1", "_service", "_tcp", "example.com", testTarget,
-		srvPriority, srvWeight, srvPort)
+	srvRec := recSRV("srv1", testSRVName, testTarget, srvPriority, srvWeight, srvPort)
 
 	tests := []struct {
 		name           string
@@ -153,9 +147,9 @@ func TestGetEndpoints(t *testing.T) {
 	}{
 		{
 			name: "successful fetch with A records",
-			responseBody: pageOf(
-				envA(testDNSID1, testDomain, testIPv4A, 300),
-				envA(testDNSID2, "test2.example.com", testIPv4B, 600),
+			responseBody: listOf(
+				recA(testDNSID1, testDomain, testIPv4A, 300),
+				recA(testDNSID2, "test2.example.com", testIPv4B, 600),
 			),
 			responseStatus: http.StatusOK,
 			expectedLen:    2,
@@ -171,7 +165,7 @@ func TestGetEndpoints(t *testing.T) {
 		},
 		{
 			name:           "SRV record reassembled into external-dns shape",
-			responseBody:   pageOf(srvEnv),
+			responseBody:   listOf(srvRec),
 			responseStatus: http.StatusOK,
 			expectedLen:    1,
 			validateResult: func(t *testing.T, records []DNSRecord) {
@@ -186,12 +180,12 @@ func TestGetEndpoints(t *testing.T) {
 			},
 		},
 		{
-			name: "FORWARD_DOMAIN is filtered out",
-			responseBody: pageOf(
-				envA(testDNSID1, testDomain, testIPv4A, 300),
-				dnsPolicyEnvelope{
-					ID: "fwd1", Type: policyTypeForward, Enabled: true,
-					Domain: "internal.example.com", IPAddress: "10.0.0.53",
+			name: "unmanaged record type is filtered out",
+			responseBody: listOf(
+				recA(testDNSID1, testDomain, testIPv4A, 300),
+				staticDNSRecord{
+					ID: "ns1", RecordType: "NS", Enabled: true,
+					Key: "example.com", Value: "ns1.example.com",
 				},
 			),
 			responseStatus: http.StatusOK,
@@ -199,7 +193,7 @@ func TestGetEndpoints(t *testing.T) {
 		},
 		{
 			name:           "empty response",
-			responseBody:   pageOf(),
+			responseBody:   listOf(),
 			responseStatus: http.StatusOK,
 			expectedLen:    0,
 		},
@@ -222,10 +216,10 @@ func TestGetEndpoints(t *testing.T) {
 		},
 		{
 			name: "mixed record types",
-			responseBody: pageOf(
-				envA("a1", "a.example.com", "1.2.3.4", 300),
-				envCNAME(testCNAMEID, "cname.example.com", testTarget, 300),
-				envTXT("txt1", "txt.example.com", "v=spf1 include:example.com ~all"),
+			responseBody: listOf(
+				recA("a1", "a.example.com", "1.2.3.4", 300),
+				recCNAME(testCNAMEID, "cname.example.com", testTarget, 300),
+				recTXT("txt1", "txt.example.com", "v=spf1 include:example.com ~all"),
 			),
 			responseStatus: http.StatusOK,
 			expectedLen:    3,
@@ -267,126 +261,71 @@ func TestGetEndpoints(t *testing.T) {
 	}
 }
 
-// TestGetEndpoints_Pagination forces the client to walk two pages and verifies
-// it sees every record exactly once.
-func TestGetEndpoints_Pagination(t *testing.T) {
-	const total = 350
-	first := make([]dnsPolicyEnvelope, pageLimit)
-	for i := range first {
-		s := strconv.Itoa(i)
-		first[i] = envA("a"+s, "host"+s+".example.com", "192.0.2.1", 300)
-	}
-	second := make([]dnsPolicyEnvelope, total-pageLimit)
-	for i := range second {
-		s := strconv.Itoa(i)
-		second[i] = envA("b"+s, "more"+s+".example.com", "192.0.2.2", 300)
-	}
-
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		offset := r.URL.Query().Get("offset")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-
-		var data []dnsPolicyEnvelope
-		off := 0
-		switch offset {
-		case "0", "":
-			data = first
-		case strconv.Itoa(pageLimit):
-			data = second
-			off = pageLimit
-		default:
-			t.Errorf("unexpected offset %q", offset)
-		}
-		_ = json.NewEncoder(w).Encode(dnsPolicyPage{
-			Offset:     off,
-			Limit:      pageLimit,
-			Count:      len(data),
-			TotalCount: total,
-			Data:       data,
-		})
-	}))
-	defer srv.Close()
-
-	records, err := newTestClient(srv).GetEndpoints(context.Background())
-	if err != nil {
-		t.Fatalf("GetEndpoints: %v", err)
-	}
-	if got := len(records); got != total {
-		t.Errorf("expected %d records across pages, got %d", total, got)
-	}
-}
-
-// validateARequest checks an A-record POST body has the expected envelope shape.
+// validateARequest checks an A-record POST body has the expected shape.
 func validateARequest(t *testing.T, body []byte) {
 	t.Helper()
-	var env dnsPolicyEnvelope
-	if err := json.Unmarshal(body, &env); err != nil {
+	var rec staticDNSRecord
+	if err := json.Unmarshal(body, &rec); err != nil {
 		t.Fatalf("decode body: %v", err)
 	}
-	if env.Type != policyTypeA {
-		t.Errorf("Type = %q, want %q", env.Type, policyTypeA)
+	if rec.RecordType != recordTypeA {
+		t.Errorf("RecordType = %q, want %q", rec.RecordType, recordTypeA)
 	}
-	if env.Domain != testDomain {
-		t.Errorf("Domain = %q, want %q", env.Domain, testDomain)
+	if rec.Key != testDomain {
+		t.Errorf("Key = %q, want %q", rec.Key, testDomain)
 	}
-	if env.IPv4Address != testIPv4A {
-		t.Errorf("IPv4Address = %q, want %q", env.IPv4Address, testIPv4A)
+	if rec.Value != testIPv4A {
+		t.Errorf("Value = %q, want %q", rec.Value, testIPv4A)
 	}
-	if env.TTLSeconds == nil || *env.TTLSeconds != 300 {
-		t.Errorf("TTLSeconds = %v, want 300", env.TTLSeconds)
+	if rec.TTL == nil || *rec.TTL != 300 {
+		t.Errorf("TTL = %v, want 300", rec.TTL)
 	}
 }
 
-// validateSRVRequest checks an SRV-record POST body splits name and value.
+// validateSRVRequest checks an SRV-record POST body keeps the full name and
+// splits the target into its fields.
 func validateSRVRequest(t *testing.T, body []byte) {
 	t.Helper()
-	var env dnsPolicyEnvelope
-	if err := json.Unmarshal(body, &env); err != nil {
+	var rec staticDNSRecord
+	if err := json.Unmarshal(body, &rec); err != nil {
 		t.Fatalf("decode body: %v", err)
 	}
-	if env.Service != "_service" {
-		t.Errorf("Service = %q, want _service", env.Service)
+	if rec.Key != testSRVName {
+		t.Errorf("Key = %q, want %q", rec.Key, testSRVName)
 	}
-	if env.Protocol != "_tcp" {
-		t.Errorf("Protocol = %q, want _tcp", env.Protocol)
+	if rec.Priority == nil || *rec.Priority != 10 {
+		t.Errorf("Priority = %v, want 10", rec.Priority)
 	}
-	if env.Domain != "example.com" {
-		t.Errorf("Domain = %q, want example.com", env.Domain)
+	if rec.Weight == nil || *rec.Weight != 20 {
+		t.Errorf("Weight = %v, want 20", rec.Weight)
 	}
-	if env.Priority == nil || *env.Priority != 10 {
-		t.Errorf("Priority = %v, want 10", env.Priority)
+	if rec.Port == nil || *rec.Port != 8080 {
+		t.Errorf("Port = %v, want 8080", rec.Port)
 	}
-	if env.Weight == nil || *env.Weight != 20 {
-		t.Errorf("Weight = %v, want 20", env.Weight)
-	}
-	if env.Port == nil || *env.Port != 8080 {
-		t.Errorf("Port = %v, want 8080", env.Port)
-	}
-	if env.ServerDomain != testTarget {
-		t.Errorf("ServerDomain = %q, want %q", env.ServerDomain, testTarget)
+	if rec.Value != testTarget {
+		t.Errorf("Value = %q, want %q", rec.Value, testTarget)
 	}
 }
 
-// validateTTLClamped checks A-record TTL gets clamped at the spec maximum.
+// validateTTLClamped checks A-record TTL gets clamped at the maximum.
 func validateTTLClamped(t *testing.T, body []byte) {
 	t.Helper()
-	var env dnsPolicyEnvelope
-	if err := json.Unmarshal(body, &env); err != nil {
+	var rec staticDNSRecord
+	if err := json.Unmarshal(body, &rec); err != nil {
 		t.Fatalf("decode body: %v", err)
 	}
-	if env.TTLSeconds == nil || *env.TTLSeconds != ttlMaxA {
-		t.Errorf("TTLSeconds = %v, want %d", env.TTLSeconds, ttlMaxA)
+	if rec.TTL == nil || *rec.TTL != ttlMaxA {
+		t.Errorf("TTL = %v, want %d", rec.TTL, ttlMaxA)
 	}
 }
 
-// TestCreateEndpoint tests the per-type envelope construction on the create
+// TestCreateEndpoint tests the per-type record construction on the create
 // path, plus error handling for invalid SRV/MX targets.
 func TestCreateEndpoint(t *testing.T) {
 	tests := []struct {
 		name           string
 		endpoint       *endpoint.Endpoint
-		responseEnv    dnsPolicyEnvelope
+		responseRec    staticDNSRecord
 		responseStatus int
 		expectedErr    bool
 		validateReq    func(*testing.T, []byte)
@@ -394,27 +333,27 @@ func TestCreateEndpoint(t *testing.T) {
 		{
 			name:           "create A record",
 			endpoint:       endpoint.NewEndpointWithTTL(testDomain, "A", 300, testIPv4A),
-			responseEnv:    envA("new-record-1", testDomain, testIPv4A, 300),
+			responseRec:    recA("new-record-1", testDomain, testIPv4A, 300),
 			responseStatus: http.StatusOK,
 			validateReq:    validateARequest,
 		},
 		{
 			name:           "create CNAME record",
 			endpoint:       endpoint.NewEndpointWithTTL(testAlias, "CNAME", 600, testTarget),
-			responseEnv:    envCNAME("new-cname-1", testAlias, testTarget, 600),
+			responseRec:    recCNAME("new-cname-1", testAlias, testTarget, 600),
 			responseStatus: http.StatusOK,
 		},
 		{
-			name:           "create SRV record splits name and value",
+			name:           "create SRV record splits value into fields",
 			endpoint:       endpoint.NewEndpointWithTTL(testSRVName, "SRV", 300, "10 20 8080 target.example.com"),
-			responseEnv:    envSRV("new-srv-1", "_service", "_tcp", "example.com", testTarget, 10, 20, 8080),
+			responseRec:    recSRV("new-srv-1", testSRVName, testTarget, 10, 20, 8080),
 			responseStatus: http.StatusOK,
 			validateReq:    validateSRVRequest,
 		},
 		{
 			name:           "TTL clamped to A-record maximum",
 			endpoint:       endpoint.NewEndpointWithTTL(testDomain, "A", 999999, testIPv4A),
-			responseEnv:    envA("a-clamped", testDomain, testIPv4A, ttlMaxA),
+			responseRec:    recA("a-clamped", testDomain, testIPv4A, ttlMaxA),
 			responseStatus: http.StatusOK,
 			validateReq:    validateTTLClamped,
 		},
@@ -424,20 +363,20 @@ func TestCreateEndpoint(t *testing.T) {
 				testMultiName, "CNAME", 300,
 				"target1.example.com", "target2.example.com",
 			),
-			responseEnv:    envCNAME("new-record", testMultiName, "target1.example.com", 300),
+			responseRec:    recCNAME("new-record", testMultiName, "target1.example.com", 300),
 			responseStatus: http.StatusOK,
 		},
 		{
 			name:           "HTTP 400 error",
 			endpoint:       endpoint.NewEndpointWithTTL(testDomain, "A", 300, testIPv4A),
-			responseEnv:    dnsPolicyEnvelope{},
+			responseRec:    staticDNSRecord{},
 			responseStatus: http.StatusBadRequest,
 			expectedErr:    true,
 		},
 		{
 			name:           "invalid SRV format",
 			endpoint:       endpoint.NewEndpointWithTTL(testSRVName, "SRV", 300, "invalid srv format"),
-			responseEnv:    dnsPolicyEnvelope{},
+			responseRec:    staticDNSRecord{},
 			responseStatus: http.StatusOK,
 			expectedErr:    true,
 		},
@@ -459,7 +398,7 @@ func TestCreateEndpoint(t *testing.T) {
 
 					return
 				}
-				_ = json.NewEncoder(w).Encode(tt.responseEnv)
+				_ = json.NewEncoder(w).Encode(tt.responseRec)
 			}))
 			defer server.Close()
 
@@ -542,14 +481,14 @@ func TestDeleteRecord(t *testing.T) {
 			if gotMethod != http.MethodDelete {
 				t.Errorf("method = %q, want DELETE", gotMethod)
 			}
-			if !strings.HasSuffix(gotPath, "/dns/policies/"+tt.recordID) {
-				t.Errorf("path = %q, expected suffix /dns/policies/%s", gotPath, tt.recordID)
+			if want := "/v2/api/site/" + testSite + "/static-dns/" + tt.recordID; !strings.HasSuffix(gotPath, want) {
+				t.Errorf("path = %q, expected suffix %s", gotPath, want)
 			}
 		})
 	}
 }
 
-// TestResolveSite covers the startup site-UUID lookup, including the
+// TestResolveSite covers the startup site lookup, including the
 // internalReference / UUID heuristic and the empty/multi-match error paths.
 func TestResolveSite(t *testing.T) {
 	tests := []struct {
@@ -559,6 +498,7 @@ func TestResolveSite(t *testing.T) {
 		wantField  string // "internalReference" or "id"
 		wantFilter string // exact filter expression, when escaping matters
 		wantID     string
+		wantName   string
 		wantErr    bool
 	}{
 		{
@@ -567,6 +507,7 @@ func TestResolveSite(t *testing.T) {
 			data:      []siteEntry{{ID: testSiteUUID, InternalReference: "default", Name: "Default"}},
 			wantField: "internalReference",
 			wantID:    testSiteUUID,
+			wantName:  testSite,
 		},
 		{
 			name:       "single quote in site name is doubled",
@@ -574,13 +515,15 @@ func TestResolveSite(t *testing.T) {
 			data:       []siteEntry{{ID: testSiteUUID, InternalReference: "o'brien", Name: "O'Brien"}},
 			wantFilter: "internalReference.eq('o''brien')",
 			wantID:     testSiteUUID,
+			wantName:   "o'brien",
 		},
 		{
-			name:      "UUID input filters by id",
+			name:      "UUID input filters by id and yields the site name",
 			ref:       testSiteUUID,
 			data:      []siteEntry{{ID: testSiteUUID, InternalReference: "default", Name: "Default"}},
 			wantField: "id",
 			wantID:    testSiteUUID,
+			wantName:  testSite,
 		},
 		{
 			name:    "no match errors",
@@ -617,7 +560,7 @@ func TestResolveSite(t *testing.T) {
 				httpc: srv.Client(),
 			}
 
-			id, err := c.resolveSite(context.Background(), tt.ref)
+			site, err := c.resolveSite(context.Background(), tt.ref)
 			if tt.wantErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -628,14 +571,121 @@ func TestResolveSite(t *testing.T) {
 			if err != nil {
 				t.Fatalf("resolveSite: %v", err)
 			}
-			if id != tt.wantID {
-				t.Errorf("siteID = %q, want %q", id, tt.wantID)
+			if site.ID != tt.wantID {
+				t.Errorf("site.ID = %q, want %q", site.ID, tt.wantID)
+			}
+			if site.InternalReference != tt.wantName {
+				t.Errorf("site.InternalReference = %q, want %q", site.InternalReference, tt.wantName)
 			}
 			if tt.wantField != "" && !strings.HasPrefix(capturedFilter, tt.wantField+".eq(") {
 				t.Errorf("filter = %q, expected prefix %s.eq(", capturedFilter, tt.wantField)
 			}
 			if tt.wantFilter != "" && capturedFilter != tt.wantFilter {
 				t.Errorf("filter = %q, want %q", capturedFilter, tt.wantFilter)
+			}
+		})
+	}
+}
+
+// TestCreateEndpoint_V2ErrorEnvelope verifies the /static-dns error shape
+// ({code, errorCode, message, details}) surfaces as an APIError that keeps the
+// controller's code and message, rather than the raw body.
+func TestCreateEndpoint_V2ErrorEnvelope(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set(headerContentType, contentTypeJSON)
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"code":"api.err.InvalidPayload","details":{"key":"bad"},"errorCode":400,"message":"Invalid payload"}`))
+	}))
+	defer srv.Close()
+
+	ep := endpoint.NewEndpointWithTTL(testDomain, recordTypeA, 300, testIPv4A)
+	_, err := newTestClient(srv).CreateEndpoint(context.Background(), ep)
+	if err == nil {
+		t.Fatal("expected an error from a 400 response")
+	}
+
+	apiErr, ok := errors.AsType[*APIError](err)
+	if !ok {
+		t.Fatalf("expected *APIError, got %T: %v", err, err)
+	}
+	if apiErr.StatusCode != http.StatusBadRequest {
+		t.Errorf("StatusCode = %d, want 400", apiErr.StatusCode)
+	}
+	if want := "api.err.InvalidPayload: Invalid payload"; apiErr.Message != want {
+		t.Errorf("Message = %q, want %q", apiErr.Message, want)
+	}
+}
+
+// TestNewUnifiClient_RoutesBySiteName exercises the real constructor: a UUID
+// in UNIFI_SITE is resolved through /sites to its internalReference, and that
+// name (not the UUID) is what the /static-dns paths carry, in both local and
+// cloud mode.
+func TestNewUnifiClient_RoutesBySiteName(t *testing.T) {
+	const (
+		siteUUID = "99999999-8888-7777-6666-555555555555"
+		siteName = "branch"
+	)
+
+	for _, mode := range []struct {
+		name      string
+		consoleID string
+		prefix    string
+	}{
+		{name: "local"},
+		{name: "cloud", consoleID: testConsoleID, prefix: "/v1/connector/consoles/" + testConsoleID},
+	} {
+		t.Run(mode.name, func(t *testing.T) {
+			var gotPaths []string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotPaths = append(gotPaths, r.Method+" "+r.URL.Path)
+				w.Header().Set(headerContentType, contentTypeJSON)
+				switch {
+				case strings.HasSuffix(r.URL.Path, "/integration/v1/sites"):
+					_ = json.NewEncoder(w).Encode(sitePage{Count: 1, TotalCount: 1, Data: []siteEntry{
+						{ID: siteUUID, InternalReference: siteName, Name: "Branch"},
+					}})
+				case r.Method == http.MethodGet:
+					_ = json.NewEncoder(w).Encode(listOf())
+				case r.Method == http.MethodPost:
+					_ = json.NewEncoder(w).Encode(recA(testDNSID1, testDomain, testIPv4A, 300))
+				case r.Method == http.MethodDelete:
+					w.WriteHeader(http.StatusOK)
+				}
+			}))
+			defer srv.Close()
+
+			c, err := newUnifiClient(&Config{
+				Host: srv.URL, Site: siteUUID, APIKey: testKeyA, ConsoleID: mode.consoleID,
+				RetryAttempts: 1, RetryInitialDelay: time.Millisecond, RetryMaxDelay: time.Millisecond,
+			})
+			if err != nil {
+				t.Fatalf("newUnifiClient: %v", err)
+			}
+			if c.siteName != siteName {
+				t.Fatalf("siteName = %q, want %q", c.siteName, siteName)
+			}
+
+			ctx := context.Background()
+			if _, err := c.GetEndpoints(ctx); err != nil {
+				t.Fatalf("GetEndpoints: %v", err)
+			}
+			ep := endpoint.NewEndpointWithTTL(testDomain, recordTypeA, 300, testIPv4A)
+			if _, err := c.CreateEndpoint(ctx, ep); err != nil {
+				t.Fatalf("CreateEndpoint: %v", err)
+			}
+			if err := c.DeleteRecord(ctx, testDNSID1); err != nil {
+				t.Fatalf("DeleteRecord: %v", err)
+			}
+
+			records := mode.prefix + "/proxy/network/v2/api/site/" + siteName + "/static-dns"
+			want := []string{
+				"GET " + mode.prefix + "/proxy/network/integration/v1/sites",
+				"GET " + records,
+				"POST " + records,
+				"DELETE " + records + "/" + testDNSID1,
+			}
+			if !slices.Equal(gotPaths, want) {
+				t.Errorf("request paths = %q, want %q", gotPaths, want)
 			}
 		})
 	}
@@ -675,7 +725,7 @@ func TestDecodeJSON_RejectsOversizedBody(t *testing.T) {
 	resp := &http.Response{Body: io.NopCloser(strings.NewReader(oversized))}
 
 	var dest any
-	n, err := decodeJSON(resp, "DNS policies", &dest)
+	n, err := decodeJSON(resp, "DNS records", &dest)
 	if err == nil {
 		t.Fatal("expected error for oversized body, got nil")
 	}
@@ -707,8 +757,8 @@ func TestDecodeJSON_AcceptsBodyAtLimit(t *testing.T) {
 	maxResponseBytes = int64(len(body)) // exactly at the cap
 
 	resp := &http.Response{Body: io.NopCloser(strings.NewReader(body))}
-	var dest dnsPolicyPage
-	if _, err := decodeJSON(resp, "DNS policies", &dest); err != nil {
+	var dest sitePage
+	if _, err := decodeJSON(resp, "sites", &dest); err != nil {
 		t.Fatalf("body exactly at the limit should decode, got: %v", err)
 	}
 }
@@ -718,7 +768,7 @@ func TestDecodeJSON_AcceptsBodyAtLimit(t *testing.T) {
 // histogram. It previously hardcoded 0, so the create_endpoint operation never
 // contributed a sample.
 func TestCreateEndpoint_RecordsResponseSize(t *testing.T) {
-	// Echo the posted envelope back as the created record so decodeJSON reads a
+	// Echo the posted record back as the created record so decodeJSON reads a
 	// non-empty, well-formed body.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)

@@ -9,9 +9,9 @@ on:
     paths-ignore:
       - "**.md"
       - ".release-please-manifest.json"
+  # No branch filter: a stacked PR targets another PR's branch, and it must
+  # get the same checks as a PR that targets main.
   pull_request:
-    branches:
-      - main
   merge_group:
   workflow_dispatch:
 

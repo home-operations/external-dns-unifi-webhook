@@ -39,8 +39,8 @@ func fixture(t *testing.T, name string) []byte {
 	return data
 }
 
-// testClient builds an httpClient pointed at srv with the site name
-// pre-resolved, so tests skip the startup site-resolution round trip.
+// testClient builds an httpClient pointed at srv without the startup probe
+// that newUnifiClient runs.
 func testClient(srv *httptest.Server, cfg *Config) *httpClient {
 	httpc := srv.Client()
 	httpc.Timeout = cfg.RequestTimeout
@@ -140,31 +140,6 @@ func TestProviderRecords_RealFixture(t *testing.T) {
 	}
 	if !sawHeritage {
 		t.Errorf("no TXT endpoint carried external-dns heritage payload")
-	}
-}
-
-// TestSitesFixture verifies resolveSite parses a real-shaped sites response.
-func TestSitesFixture(t *testing.T) {
-	body := fixture(t, "sites_list.json")
-
-	c, cleanup := fixtureClient(t, func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(body)
-	})
-	// Clear pre-set siteName so we exercise the resolver path.
-	c.siteName = ""
-	defer cleanup()
-
-	site, err := c.resolveSite(context.Background(), "default")
-	if err != nil {
-		t.Fatalf("resolveSite: %v", err)
-	}
-	if site.ID != testSiteUUID {
-		t.Errorf("site.ID = %q, want %q", site.ID, testSiteUUID)
-	}
-	if site.InternalReference != testSite {
-		t.Errorf("site.InternalReference = %q, want %q", site.InternalReference, testSite)
 	}
 }
 

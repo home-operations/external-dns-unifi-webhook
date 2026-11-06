@@ -297,21 +297,21 @@ func TestWorstCaseRetryBudget(t *testing.T) {
 	}
 }
 
-// TestSiteResolveTimeoutFor_CoversRetryBudget is the #223 regression: the
+// TestStartupProbeTimeoutFor_CoversRetryBudget is the #223 regression: the
 // startup probe timeout must scale with the operator's retry settings instead
 // of being a fixed cap that cancels configured retries mid-backoff.
-func TestSiteResolveTimeoutFor_CoversRetryBudget(t *testing.T) {
-	// A retry budget the old fixed 15s site-resolution cap would have truncated.
+func TestStartupProbeTimeoutFor_CoversRetryBudget(t *testing.T) {
+	// A retry budget the old fixed 15s startup probe cap would have truncated.
 	cfg := &Config{RetryAttempts: 6, RetryInitialDelay: 500 * time.Millisecond, RetryMaxDelay: 10 * time.Second}
 
 	budget := worstCaseRetryBudget(cfg)
-	if budget <= siteResolveBaseTimeout {
-		t.Fatalf("test premise broken: budget %v should exceed the %v base headroom", budget, siteResolveBaseTimeout)
+	if budget <= startupProbeBaseTimeout {
+		t.Fatalf("test premise broken: budget %v should exceed the %v base headroom", budget, startupProbeBaseTimeout)
 	}
 
-	got := siteResolveTimeoutFor(cfg)
-	if want := siteResolveBaseTimeout + budget; got != want {
-		t.Errorf("siteResolveTimeoutFor = %v, want base %v + budget %v = %v", got, siteResolveBaseTimeout, budget, want)
+	got := startupProbeTimeoutFor(cfg)
+	if want := startupProbeBaseTimeout + budget; got != want {
+		t.Errorf("startupProbeTimeoutFor = %v, want base %v + budget %v = %v", got, startupProbeBaseTimeout, budget, want)
 	}
 	if got <= budget {
 		t.Errorf("startup timeout %v must leave request headroom beyond the retry budget %v", got, budget)
@@ -319,8 +319,8 @@ func TestSiteResolveTimeoutFor_CoversRetryBudget(t *testing.T) {
 
 	// With retries disabled the timeout collapses to just the base headroom.
 	none := &Config{RetryAttempts: 1, RetryInitialDelay: 500 * time.Millisecond, RetryMaxDelay: 10 * time.Second}
-	if got := siteResolveTimeoutFor(none); got != siteResolveBaseTimeout {
-		t.Errorf("no-retry timeout = %v, want base %v", got, siteResolveBaseTimeout)
+	if got := startupProbeTimeoutFor(none); got != startupProbeBaseTimeout {
+		t.Errorf("no-retry timeout = %v, want base %v", got, startupProbeBaseTimeout)
 	}
 }
 

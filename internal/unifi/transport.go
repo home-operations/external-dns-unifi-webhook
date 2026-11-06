@@ -237,7 +237,7 @@ func (c *httpClient) backoff(attempt int, hint time.Duration) time.Duration {
 // a 429 (backoff honors the hint as a floor, then clamps to RetryMaxDelay). So
 // the tight, hint-safe upper bound is simply (RetryAttempts-1) * RetryMaxDelay —
 // the exponential schedule only ever produces shorter waits, never longer. Used
-// to size the startup site-resolution timeout: a fixed cap that ignores this
+// to size the startup probe timeout: a fixed cap that ignores this
 // budget would cancel retries the operator explicitly asked for and crashloop
 // the process.
 func worstCaseRetryBudget(cfg *Config) time.Duration {
@@ -274,8 +274,6 @@ func opLabel(path string) string {
 	switch {
 	case strings.Contains(path, "/static-dns"):
 		return "static_dns"
-	case strings.Contains(path, "/sites"):
-		return "sites"
 	}
 
 	return "other"

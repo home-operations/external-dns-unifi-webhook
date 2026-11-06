@@ -31,9 +31,7 @@ const (
 	mediaType   = "application/external.dns.webhook+json;version=1"
 	startupWait = 10 * time.Second
 
-	mockSiteUUID = "11111111-2222-3333-4444-555555555555"
-	sitesPath    = "/proxy/network/integration/v1/sites"
-	recordsPath  = "/proxy/network/v2/api/site/default/static-dns"
+	recordsPath = "/proxy/network/v2/api/site/default/static-dns"
 )
 
 type harness struct {
@@ -130,9 +128,8 @@ func pickFreePort(t *testing.T) int {
 }
 
 // startMockUniFi returns a httptest server that mimics a UniFi Network
-// controller: the Integration API's /v1/sites for site resolution, and the
-// /v2/api/site/{site}/static-dns endpoints for the actual record store. Hits
-// are tracked so tests can assert the binary actually called upstream.
+// controller's /v2/api/site/{site}/static-dns endpoints. Hits are tracked so
+// tests can assert the binary actually called upstream.
 func startMockUniFi(t *testing.T, hits *atomic.Int32) *httptest.Server {
 	t.Helper()
 
@@ -143,18 +140,6 @@ func startMockUniFi(t *testing.T, hits *atomic.Int32) *httptest.Server {
 	)
 
 	mux := http.NewServeMux()
-
-	// Site resolution — return one site whose internalReference is "default".
-	mux.HandleFunc(sitesPath, func(w http.ResponseWriter, _ *http.Request) {
-		hits.Add(1)
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"offset": 0, "limit": 25, "count": 1, "totalCount": 1,
-			"data": []map[string]any{
-				{"id": mockSiteUUID, "internalReference": "default", "name": "Default"},
-			},
-		})
-	})
 
 	// List/create — at the collection URL.
 	mux.HandleFunc(recordsPath, func(w http.ResponseWriter, r *http.Request) {

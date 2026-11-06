@@ -188,12 +188,6 @@ func TestFormatURLRealWorldUsage(t *testing.T) {
 			expected: "https://unifi.local/proxy/network/v2/api/site/default/static-dns/" + testRecordID,
 		},
 		{
-			name:     "sites listing",
-			path:     pathSites,
-			params:   []string{testHost},
-			expected: "https://unifi.local/proxy/network/integration/v1/sites",
-		},
-		{
 			name:     "controller with port",
 			path:     pathStaticDNS,
 			params:   []string{testHostPort, testSite},

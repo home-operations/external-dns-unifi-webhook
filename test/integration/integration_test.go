@@ -10,7 +10,7 @@
 //
 // Optional env:
 //
-//	UNIFI_SITE=default          # site name or UUID (default: "default")
+//	UNIFI_SITE=default          # site name (default: "default")
 //	UNIFI_SKIP_TLS_VERIFY=true  # default true for self-signed controllers
 //	UNIFI_CA_CERT=/path/to/ca   # alternative to skipping verification
 //
@@ -162,9 +162,9 @@ func TestIntegration(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
-		// Just succeeding here proves: TLS handshake, X-API-KEY auth, site
-		// name resolution against /v1/sites, the /static-dns list fetch, and
-		// per-type conversion for every record on the controller.
+		// Just succeeding here proves: TLS handshake, X-API-KEY auth, the
+		// /static-dns list fetch for UNIFI_SITE, and per-type conversion for
+		// every record on the controller.
 		eps, err := p.Records(ctx)
 		if err != nil {
 			t.Fatalf("Records: %v", err)

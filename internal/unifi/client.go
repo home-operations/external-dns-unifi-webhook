@@ -18,20 +18,29 @@ import (
 	extdnshttp "sigs.k8s.io/external-dns/pkg/http"
 )
 
-// httpClient is the DNS provider client.
+// httpClient is the DNS provider client. siteName is the site's
+// internalReference (e.g. "default"), which is what the /static-dns paths key
+// on; it is resolved from UNIFI_SITE at startup.
 type httpClient struct {
-	cfg    *Config
-	httpc  *http.Client
-	siteID string
+	cfg      *Config
+	httpc    *http.Client
+	siteName string
 }
 
-// API paths (Network Integration API). The leading %s is the base URL, which
-// is either the local controller or the api.ui.com cloud connector prefix; see
-// Config.baseURL. The Integration API surface is identical for both.
+// API paths. The leading %s is the base URL, which is either the local
+// controller or the api.ui.com cloud connector prefix; see Config.baseURL.
+//
+// Records go through the Network application's own /v2/api/.../static-dns
+// endpoints rather than the Integration API's /dns/policies: the Integration
+// API rejects names whose labels start with an underscore (for example the
+// RFC 9462 DDR name _dns.resolver.arpa) with "domain must be valid domain",
+// while /static-dns accepts them and both are views over the same record
+// store. Site lookup stays on the Integration API because it is documented
+// and accepts either a name or a UUID.
 const (
-	pathSites    = "%s/proxy/network/integration/v1/sites"
-	pathPolicies = "%s/proxy/network/integration/v1/sites/%s/dns/policies"
-	pathPolicy   = "%s/proxy/network/integration/v1/sites/%s/dns/policies/%s"
+	pathSites           = "%s/proxy/network/integration/v1/sites"
+	pathStaticDNS       = "%s/proxy/network/v2/api/site/%s/static-dns"
+	pathStaticDNSRecord = "%s/proxy/network/v2/api/site/%s/static-dns/%s"
 )
 
 // recordType* are the external-dns / DNSRecord type strings. They map to the
@@ -55,9 +64,6 @@ var managedRecordTypes = []string{
 	recordTypeMX, recordTypeSRV, recordTypeTXT,
 }
 
-// pageLimit is the API's documented maximum page size.
-const pageLimit = 200
-
 // siteResolveBaseTimeout is the headroom the startup site-resolution probe
 // gets for the HTTP request(s) themselves. The effective timeout adds the
 // worst-case retry backoff budget on top (see siteResolveTimeoutFor), so a
@@ -76,10 +82,10 @@ func siteResolveTimeoutFor(cfg *Config) time.Duration {
 }
 
 // maxResponseBytes caps how much of a UniFi API response body we buffer into
-// memory before decoding. Integration API responses are small JSON documents
-// (a policy page is bounded by pageLimit), so a 25 MiB ceiling sits far above
-// any legitimate payload while still protecting the process from a buggy or
-// hostile controller streaming an unbounded body into io.ReadAll. It is a var
+// memory before decoding. The /static-dns list is a single unpaginated array
+// of ~150-byte entries, so a 25 MiB ceiling sits far above any legitimate
+// payload while still protecting the process from a buggy or hostile
+// controller streaming an unbounded body into io.ReadAll. It is a var
 // rather than a const so tests can lower it without generating multi-megabyte
 // fixtures.
 var maxResponseBytes int64 = 25 << 20 // 25 MiB
@@ -87,8 +93,8 @@ var maxResponseBytes int64 = 25 << 20 // 25 MiB
 var uuidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 // newUnifiClient constructs a UniFi API client and resolves the site name (or
-// UUID) supplied via UNIFI_SITE to the API's UUID at startup. The probe also
-// validates credentials early so misconfiguration fails fast.
+// UUID) supplied via UNIFI_SITE to the site's internalReference at startup.
+// The probe also validates credentials early so misconfiguration fails fast.
 func newUnifiClient(config *Config) (*httpClient, error) {
 	transport, err := newHTTPTransport(config)
 	if err != nil {
@@ -97,8 +103,8 @@ func newUnifiClient(config *Config) (*httpClient, error) {
 
 	// Do NOT wrap with extdnshttp.NewInstrumentedClient here. Its
 	// external_dns_http_request_duration_seconds metric is labelled by the
-	// request path, and the UniFi Integration API embeds the per-record UUID in
-	// the path (.../dns/policies/{uuid}). Every record ever touched then becomes
+	// request path, and the UniFi API embeds the per-record ID in the path
+	// (.../static-dns/{id}). Every record ever touched then becomes
 	// a permanent series, so the metric grows unbounded (tens of thousands of
 	// series for a few dozen records) until the /metrics payload blows past a
 	// scraper's max-scrape-size and scraping breaks entirely. UniFi API timing
@@ -111,21 +117,21 @@ func newUnifiClient(config *Config) (*httpClient, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), siteResolveTimeoutFor(config))
 	defer cancel()
-	siteID, err := c.resolveSite(ctx, config.Site)
+	site, err := c.resolveSite(ctx, config.Site)
 	if err != nil {
 		return nil, fmt.Errorf("resolving UNIFI_SITE %q: %w", config.Site, err)
 	}
-	c.siteID = siteID
-	slog.Info("resolved unifi site", "ref", config.Site, "id", siteID)
+	c.siteName = site.InternalReference
+	slog.Info("resolved unifi site", "ref", config.Site, "id", site.ID, "name", site.InternalReference)
 
 	return c, nil
 }
 
-// resolveSite turns a user-supplied site name (or UUID) into the API's site
-// UUID via GET /v1/sites with a filter. Accepts either the human-friendly
-// internalReference (e.g. "default") or a raw UUID — both are common ways
-// people identify a site in their environment.
-func (c *httpClient) resolveSite(ctx context.Context, ref string) (string, error) {
+// resolveSite looks up a user-supplied site name (or UUID) via GET /v1/sites
+// with a filter. Accepts either the human-friendly internalReference (e.g.
+// "default") or a raw UUID — both are common ways people identify a site in
+// their environment.
+func (c *httpClient) resolveSite(ctx context.Context, ref string) (siteEntry, error) {
 	field := "internalReference"
 	if uuidRegex.MatchString(ref) {
 		field = "id"
@@ -139,21 +145,21 @@ func (c *httpClient) resolveSite(ctx context.Context, ref string) (string, error
 
 	var page sitePage
 	if _, err := c.getJSON(ctx, u, "sites", &page); err != nil {
-		return "", err
+		return siteEntry{}, err
 	}
 
 	switch len(page.Data) {
 	case 0:
-		return "", fmt.Errorf("no site matches %s=%q", field, ref)
+		return siteEntry{}, fmt.Errorf("no site matches %s=%q", field, ref)
 	case 1:
-		return page.Data[0].ID, nil
+		return page.Data[0], nil
 	default:
-		return "", fmt.Errorf("multiple sites match %s=%q (%d)", field, ref, len(page.Data))
+		return siteEntry{}, fmt.Errorf("multiple sites match %s=%q (%d)", field, ref, len(page.Data))
 	}
 }
 
 // getJSON issues a GET, reads the body fully, and decodes it into dest. The
-// scope label is used in error messages ("DNS policies", "sites", ...) so the
+// scope label is used in error messages ("DNS records", "sites", ...) so the
 // caller doesn't have to repeat it across read/unmarshal sites. Returns the
 // number of body bytes read for metric accounting.
 func (c *httpClient) getJSON(ctx context.Context, reqURL, scope string, dest any) (int, error) {
@@ -188,48 +194,31 @@ func decodeJSON(resp *http.Response, scope string, dest any) (int, error) {
 }
 
 // GetEndpoints retrieves the full list of DNS records from the UniFi
-// controller, walking the paginated DNS Policies endpoint. FORWARD_DOMAIN
-// entries and unknown record types are filtered out by the converter so we
-// never report them as managed records.
+// controller. Disabled records and record types we don't manage are filtered
+// out by the converter so we never report them as managed records.
 func (c *httpClient) GetEndpoints(ctx context.Context) (records []DNSRecord, err error) {
 	start := time.Now()
-	var offset, bodyRead int
+	var bodyRead int
 	defer func() {
 		metrics.Get().RecordUniFiAPICall("get_endpoints", time.Since(start), bodyRead, err)
 	}()
 
-	for {
-		page, n, perr := c.fetchPolicyPage(ctx, offset, pageLimit)
-		bodyRead += n
-		if perr != nil {
-			return nil, fmt.Errorf("fetching DNS records from UniFi: %w", perr)
-		}
+	var entries []staticDNSRecord
+	bodyRead, err = c.getJSON(ctx, formatURL(pathStaticDNS, c.cfg.baseURL(), c.siteName), "DNS records", &entries)
+	if err != nil {
+		return nil, fmt.Errorf("fetching DNS records from UniFi: %w", err)
+	}
 
-		for _, env := range page.Data {
-			if r, ok := toDNSRecord(env); ok {
-				records = append(records, r)
-			}
-		}
-
-		offset += page.Count
-		if page.Count == 0 || offset >= page.TotalCount {
-			break
+	records = make([]DNSRecord, 0, len(entries))
+	for _, e := range entries {
+		if r, ok := toDNSRecord(e); ok {
+			records = append(records, r)
 		}
 	}
 
 	slog.Debug("fetched records", "count", len(records))
 
 	return records, nil
-}
-
-func (c *httpClient) fetchPolicyPage(ctx context.Context, offset, limit int) (dnsPolicyPage, int, error) {
-	u := fmt.Sprintf("%s?offset=%d&limit=%d",
-		formatURL(pathPolicies, c.cfg.baseURL(), c.siteID), offset, limit)
-
-	var page dnsPolicyPage
-	n, err := c.getJSON(ctx, u, "DNS policies", &page)
-
-	return page, n, err
 }
 
 // CreateEndpoint creates a new DNS record in the UniFi controller.
@@ -274,7 +263,7 @@ func (c *httpClient) CreateEndpoint(ctx context.Context, endpoint *externaldnsen
 	return created, nil
 }
 
-// isSRVConversionError reports whether err originated in SRV name or target
+// isSRVConversionError reports whether err originated in SRV target
 // parsing. It guards the SRV-specific metric so unrelated DataErrors (marshal,
 // MX parse, unsupported type) don't pollute the count.
 func isSRVConversionError(err error) bool {
@@ -284,32 +273,32 @@ func isSRVConversionError(err error) bool {
 // createOne POSTs a single DNS record and returns the number of response body
 // bytes read (for metric accounting), the created record, and any error.
 func (c *httpClient) createOne(ctx context.Context, r DNSRecord) (int, *DNSRecord, error) {
-	env, err := fromDNSRecord(r)
+	rec, err := fromDNSRecord(r)
 	if err != nil {
 		return 0, nil, err
 	}
 
-	body, err := json.Marshal(env)
+	body, err := json.Marshal(rec)
 	if err != nil {
 		return 0, nil, NewDataError("marshal", "DNS record", err)
 	}
 
-	resp, err := c.doRequest(ctx, http.MethodPost, formatURL(pathPolicies, c.cfg.baseURL(), c.siteID), body)
+	resp, err := c.doRequest(ctx, http.MethodPost, formatURL(pathStaticDNS, c.cfg.baseURL(), c.siteName), body)
 	if err != nil {
 		return 0, nil, fmt.Errorf("creating DNS record: %w", err)
 	}
 	defer extdnshttp.DrainAndClose(resp.Body)
 
-	var createdEnv dnsPolicyEnvelope
-	n, err := decodeJSON(resp, "created DNS record", &createdEnv)
+	var created staticDNSRecord
+	n, err := decodeJSON(resp, "created DNS record", &created)
 	if err != nil {
 		return n, nil, err
 	}
 
-	out, ok := toDNSRecord(createdEnv)
+	out, ok := toDNSRecord(created)
 	if !ok {
 		return n, nil, NewDataError("convert", "created DNS record",
-			fmt.Errorf("unsupported response type %q", createdEnv.Type))
+			fmt.Errorf("unsupported response type %q", created.RecordType))
 	}
 
 	return n, &out, nil
@@ -326,7 +315,7 @@ func (c *httpClient) DeleteRecord(ctx context.Context, id string) (err error) {
 		metrics.Get().RecordUniFiAPICall("delete_record", time.Since(start), 0, err)
 	}()
 
-	u := formatURL(pathPolicy, c.cfg.baseURL(), c.siteID, id)
+	u := formatURL(pathStaticDNSRecord, c.cfg.baseURL(), c.siteName, id)
 	resp, derr := c.doRequest(ctx, http.MethodDelete, u, nil)
 	if derr != nil {
 		if apiErr, ok := errors.AsType[*APIError](derr); ok && apiErr.StatusCode == http.StatusNotFound {

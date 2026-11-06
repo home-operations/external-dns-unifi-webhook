@@ -18,16 +18,16 @@ func TestFormatURL(t *testing.T) {
 			expected: testURLLoginInternal,
 		},
 		{
-			name:     "policies path with site UUID",
-			path:     pathPolicies,
-			params:   []string{testHost, testSiteUUID},
-			expected: "https://unifi.local/proxy/network/integration/v1/sites/" + testSiteUUID + "/dns/policies",
+			name:     "static-dns path with site name",
+			path:     pathStaticDNS,
+			params:   []string{testHost, testSite},
+			expected: "https://unifi.local/proxy/network/v2/api/site/default/static-dns",
 		},
 		{
-			name:     "policy path with site UUID and record ID",
-			path:     pathPolicy,
-			params:   []string{testHost, testSiteUUID, "abc123"},
-			expected: "https://unifi.local/proxy/network/integration/v1/sites/" + testSiteUUID + "/dns/policies/abc123",
+			name:     "static-dns path with site name and record ID",
+			path:     pathStaticDNSRecord,
+			params:   []string{testHost, testSite, "abc123"},
+			expected: "https://unifi.local/proxy/network/v2/api/site/default/static-dns/abc123",
 		},
 		{
 			name:     "no placeholders - appends params",
@@ -176,16 +176,16 @@ func TestFormatURLRealWorldUsage(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "list policies",
-			path:     pathPolicies,
-			params:   []string{testHost, testSiteUUID},
-			expected: "https://unifi.local/proxy/network/integration/v1/sites/" + testSiteUUID + "/dns/policies",
+			name:     "list records",
+			path:     pathStaticDNS,
+			params:   []string{testHost, testSite},
+			expected: "https://unifi.local/proxy/network/v2/api/site/default/static-dns",
 		},
 		{
-			name:     "get specific policy",
-			path:     pathPolicy,
-			params:   []string{testHost, testSiteUUID, testRecordID},
-			expected: "https://unifi.local/proxy/network/integration/v1/sites/" + testSiteUUID + "/dns/policies/" + testRecordID,
+			name:     "delete specific record",
+			path:     pathStaticDNSRecord,
+			params:   []string{testHost, testSite, testRecordID},
+			expected: "https://unifi.local/proxy/network/v2/api/site/default/static-dns/" + testRecordID,
 		},
 		{
 			name:     "sites listing",
@@ -195,9 +195,9 @@ func TestFormatURLRealWorldUsage(t *testing.T) {
 		},
 		{
 			name:     "controller with port",
-			path:     pathPolicies,
-			params:   []string{testHostPort, testSiteUUID},
-			expected: "https://192.168.1.1:8443/proxy/network/integration/v1/sites/" + testSiteUUID + "/dns/policies",
+			path:     pathStaticDNS,
+			params:   []string{testHostPort, testSite},
+			expected: "https://192.168.1.1:8443/proxy/network/v2/api/site/default/static-dns",
 		},
 	}
 

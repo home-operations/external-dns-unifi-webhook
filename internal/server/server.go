@@ -82,7 +82,7 @@ func buildHealthHandler(cfg *config.Config, readyz http.HandlerFunc) http.Handle
 	mountHealth(mux, readyz)
 
 	if cfg.PprofEnabled {
-		slog.Warn("pprof endpoints enabled on health server — disable in production unless investigating")
+		slog.Warn("pprof endpoints are enabled on the health server. Unless you investigate a problem, disable them in production")
 		mux.HandleFunc("GET /debug/pprof/", pprof.Index)
 		mux.HandleFunc("GET /debug/pprof/cmdline", pprof.Cmdline)
 		mux.HandleFunc("GET /debug/pprof/profile", pprof.Profile)

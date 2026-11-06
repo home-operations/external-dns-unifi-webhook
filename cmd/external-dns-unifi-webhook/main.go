@@ -43,9 +43,9 @@ func main() {
 	)
 	defer stop()
 
-	// /readyz delegates to provider.Records — failures mean the upstream
-	// UniFi controller is unreachable or credentials are invalid, both of
-	// which should keep the pod out of rotation.
+	// /readyz delegates to provider.Records. A failure means that the upstream
+	// UniFi controller is unreachable or that the credentials are invalid.
+	// Both must keep the pod out of rotation.
 	probe := func(ctx context.Context) error {
 		_, err := provider.Records(ctx)
 

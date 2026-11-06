@@ -67,9 +67,9 @@ var (
 	instance *Metrics
 )
 
-// New initialises the package-wide metrics instance against the default
+// New initializes the package-wide metrics instance against the default
 // Prometheus registerer. Safe to call multiple times — only the first call
-// performs initialisation, and the supplied version is recorded then.
+// performs initialization, and the supplied version is recorded then.
 func New(version string) *Metrics {
 	initOnce.Do(func() {
 		instance = build(promauto.With(prometheus.DefaultRegisterer), version)
@@ -78,8 +78,8 @@ func New(version string) *Metrics {
 	return instance
 }
 
-// Get returns the singleton metrics instance, initialising it with an
-// "unknown" version if New has not yet been called.
+// Get returns the singleton metrics instance. If New did not run yet, Get
+// initializes the instance with an "unknown" version.
 func Get() *Metrics {
 	return New("unknown")
 }

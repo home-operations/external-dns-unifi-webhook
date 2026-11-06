@@ -71,12 +71,12 @@ var managedRecordTypes = []string{
 // retry knobs never starves the probe mid-backoff.
 const siteResolveBaseTimeout = 15 * time.Second
 
-// siteResolveTimeoutFor returns how long the startup probe may run for the
-// given config: the fixed request headroom plus the worst-case time the retry
-// loop can spend in backoff. Deriving it from the retry settings (rather than a
-// fixed cap) is what stops an operator who raises UNIFI_RETRY_ATTEMPTS — to ride
-// out a slow or rate-limiting controller — from instead tripping a startup
-// context deadline and crashlooping on every restart.
+// siteResolveTimeoutFor returns how long the startup probe can run for the
+// given configuration: the fixed request headroom plus the worst-case time the
+// retry loop can spend in backoff. The limit comes from the retry
+// configuration rather than a fixed cap. An operator who raises
+// UNIFI_RETRY_ATTEMPTS to ride out a slow or rate-limiting controller then
+// does not trip a startup context deadline and crashloop on every restart.
 func siteResolveTimeoutFor(cfg *Config) time.Duration {
 	return siteResolveBaseTimeout + worstCaseRetryBudget(cfg)
 }
@@ -232,7 +232,7 @@ func (c *httpClient) CreateEndpoint(ctx context.Context, endpoint *externaldnsen
 
 	if endpoint.RecordType == recordTypeCNAME && len(endpoint.Targets) > 1 {
 		m.IgnoredCNAMETargetsTotal.WithLabelValues(metrics.ProviderName).Inc()
-		slog.Warn("ignoring additional CNAME targets; only the first target will be used",
+		slog.Warn("The provider ignores additional CNAME targets and uses only the first target",
 			"key", endpoint.DNSName, "ignored_targets", endpoint.Targets[1:])
 		endpoint.Targets = endpoint.Targets[:1]
 	}

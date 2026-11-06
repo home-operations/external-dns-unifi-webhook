@@ -25,9 +25,9 @@ func (r *ResponseRecorder) WriteHeader(code int) {
 	r.ResponseWriter.WriteHeader(code)
 }
 
-// Write is a transparent passthrough that also counts bytes written. It does
-// not re-annotate the underlying Write error — a ResponseWriter wrapper should
-// surface the original error unchanged.
+// Write is a transparent passthrough that also counts the bytes written. It
+// does not re-annotate the underlying Write error. A ResponseWriter wrapper
+// must surface the original error unchanged.
 func (r *ResponseRecorder) Write(b []byte) (int, error) {
 	n, err := r.ResponseWriter.Write(b)
 	r.written += n

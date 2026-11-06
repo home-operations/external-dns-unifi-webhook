@@ -1,5 +1,5 @@
 status:       200
 content_type: application/json
 url:          https://unifi.example.com/proxy/network/v2/api/site/default/static-dns
-note:         Captured from a live UniFi controller and anonymised. The list
-              is a bare JSON array; ttl is present only on A/AAAA/CNAME rows.
+note:         Captured from a live UniFi controller and anonymized. The list
+              is a bare JSON array. Only A/AAAA/CNAME rows include ttl.

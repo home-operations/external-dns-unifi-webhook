@@ -1,631 +1,618 @@
-{
-  "offset": 0,
-  "limit": 200,
-  "count": 83,
-  "totalCount": 83,
-  "data": [
-    {
-      "id": "00000000-0000-0000-0000-000000000001",
-      "enabled": true,
-      "domain": "unifi.example.com",
-      "type": "A_RECORD",
-      "ipv4Address": "192.0.2.1",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000002",
-      "enabled": true,
-      "domain": "k8s.internal",
-      "type": "CNAME_RECORD",
-      "targetDomain": "k8s.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000003",
-      "enabled": true,
-      "domain": "k8s.example.com",
-      "type": "A_RECORD",
-      "ipv4Address": "198.51.100.120",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000004",
-      "enabled": true,
-      "domain": "k8s.main.a-k8s.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=service/kube-system/kube-api\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000005",
-      "enabled": true,
-      "domain": "smtp-relay.example.com",
-      "type": "A_RECORD",
-      "ipv4Address": "198.51.100.122",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000006",
-      "enabled": true,
-      "domain": "k8s.main.a-smtp-relay.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=service/default/smtp-relay\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000007",
-      "enabled": true,
-      "domain": "flux-webhook.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "external.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000008",
-      "enabled": true,
-      "domain": "external.example.com",
-      "type": "A_RECORD",
-      "ipv4Address": "198.51.100.126",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000009",
-      "enabled": true,
-      "domain": "internal.example.com",
-      "type": "A_RECORD",
-      "ipv4Address": "198.51.100.121",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000010",
-      "enabled": true,
-      "domain": "status.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "external.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000011",
-      "enabled": true,
-      "domain": "go2rtc.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000012",
-      "enabled": true,
-      "domain": "flux-operator.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000013",
-      "enabled": true,
-      "domain": "kromgo.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "external.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000014",
-      "enabled": true,
-      "domain": "gatus.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "external.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000015",
-      "enabled": true,
-      "domain": "echo.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "external.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000016",
-      "enabled": true,
-      "domain": "k8s.main.cname-flux-webhook.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/flux-system/github-webhook\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000017",
-      "enabled": true,
-      "domain": "k8s.main.a-external.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=service/network/envoy-external\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000018",
-      "enabled": true,
-      "domain": "k8s.main.a-internal.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=service/network/envoy-internal\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000019",
-      "enabled": true,
-      "domain": "k8s.main.cname-status.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/o11y/gatus\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000020",
-      "enabled": true,
-      "domain": "k8s.main.cname-go2rtc.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/go2rtc\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000021",
-      "enabled": true,
-      "domain": "k8s.main.cname-flux-operator.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/flux-system/flux-operator\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000022",
-      "enabled": true,
-      "domain": "k8s.main.cname-kromgo.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/o11y/kromgo\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000023",
-      "enabled": true,
-      "domain": "k8s.main.cname-gatus.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/o11y/gatus\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000024",
-      "enabled": true,
-      "domain": "k8s.main.cname-echo.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/network/echo\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000025",
-      "enabled": true,
-      "domain": "kopia.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000026",
-      "enabled": true,
-      "domain": "rook.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000027",
-      "enabled": true,
-      "domain": "k8s.main.cname-kopia.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/volsync-system/kopia\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000028",
-      "enabled": true,
-      "domain": "k8s.main.cname-rook.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/rook-ceph/rook-ceph-dashboard\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000029",
-      "enabled": true,
-      "domain": "thelounge.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000030",
-      "enabled": true,
-      "domain": "mosquitto.example.com",
-      "type": "A_RECORD",
-      "ipv4Address": "198.51.100.129",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000031",
-      "enabled": true,
-      "domain": "sonarr.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000032",
-      "enabled": true,
-      "domain": "prowlarr.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000033",
-      "enabled": true,
-      "domain": "atuin.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000034",
-      "enabled": true,
-      "domain": "vlogs.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000035",
-      "enabled": true,
-      "domain": "qui.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000036",
-      "enabled": true,
-      "domain": "grafana.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000037",
-      "enabled": true,
-      "domain": "k8s.main.cname-thelounge.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/thelounge\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000038",
-      "enabled": true,
-      "domain": "k8s.main.a-mosquitto.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=service/default/mosquitto\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000039",
-      "enabled": true,
-      "domain": "k8s.main.cname-sonarr.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/sonarr\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000040",
-      "enabled": true,
-      "domain": "k8s.main.cname-prowlarr.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/prowlarr\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000041",
-      "enabled": true,
-      "domain": "k8s.main.cname-atuin.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/atuin\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000042",
-      "enabled": true,
-      "domain": "k8s.main.cname-vlogs.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/o11y/victoria-logs\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000043",
-      "enabled": true,
-      "domain": "k8s.main.cname-qui.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/qui\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000044",
-      "enabled": true,
-      "domain": "k8s.main.cname-grafana.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/o11y/grafana-httproute\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000045",
-      "enabled": true,
-      "domain": "zwave.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000046",
-      "enabled": true,
-      "domain": "bazarr.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000047",
-      "enabled": true,
-      "domain": "k8s.main.cname-zwave.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/zwave\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000048",
-      "enabled": true,
-      "domain": "k8s.main.cname-bazarr.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/bazarr\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000049",
-      "enabled": true,
-      "domain": "agregarr.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000050",
-      "enabled": true,
-      "domain": "qbittorrent.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000051",
-      "enabled": true,
-      "domain": "k8s.main.cname-agregarr.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/agregarr\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000052",
-      "enabled": true,
-      "domain": "k8s.main.cname-qbittorrent.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/qbittorrent\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000053",
-      "enabled": true,
-      "domain": "requests.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "external.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000054",
-      "enabled": true,
-      "domain": "seerr.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "external.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000055",
-      "enabled": true,
-      "domain": "k8s.main.cname-requests.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/seerr\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000056",
-      "enabled": true,
-      "domain": "k8s.main.cname-seerr.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/seerr\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000057",
-      "enabled": true,
-      "domain": "radarr.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000058",
-      "enabled": true,
-      "domain": "k8s.main.cname-radarr.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/radarr\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000059",
-      "enabled": true,
-      "domain": "sabnzbd.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000060",
-      "enabled": true,
-      "domain": "k8s.main.cname-sabnzbd.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/sabnzbd\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000061",
-      "enabled": true,
-      "domain": "zigbee.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000062",
-      "enabled": true,
-      "domain": "autobrr.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000063",
-      "enabled": true,
-      "domain": "tautulli.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000064",
-      "enabled": true,
-      "domain": "k8s.main.cname-zigbee.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/zigbee\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000065",
-      "enabled": true,
-      "domain": "k8s.main.cname-autobrr.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/autobrr\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000066",
-      "enabled": true,
-      "domain": "k8s.main.cname-tautulli.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/tautulli\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000067",
-      "enabled": true,
-      "domain": "plex.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "external.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000068",
-      "enabled": true,
-      "domain": "home-assistant.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "external.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000069",
-      "enabled": true,
-      "domain": "hass.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "external.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000070",
-      "enabled": true,
-      "domain": "slskd.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000071",
-      "enabled": true,
-      "domain": "k8s.main.cname-plex.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/plex\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000072",
-      "enabled": true,
-      "domain": "k8s.main.cname-home-assistant.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/home-assistant\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000073",
-      "enabled": true,
-      "domain": "k8s.main.cname-hass.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/home-assistant\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000074",
-      "enabled": true,
-      "domain": "k8s.main.cname-slskd.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/slskd\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000075",
-      "enabled": true,
-      "domain": "prometheus.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000076",
-      "enabled": true,
-      "domain": "alertmanager.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "internal.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000077",
-      "enabled": true,
-      "domain": "k8s.main.cname-prometheus.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/o11y/kube-prometheus-stack-prometheus\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000078",
-      "enabled": true,
-      "domain": "k8s.main.cname-alertmanager.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/o11y/kube-prometheus-stack-alertmanager\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000079",
-      "enabled": true,
-      "domain": "opengist.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "external.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000080",
-      "enabled": true,
-      "domain": "gist.example.com",
-      "type": "CNAME_RECORD",
-      "targetDomain": "external.example.com",
-      "ttlSeconds": 0
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000081",
-      "enabled": true,
-      "domain": "k8s.main.cname-opengist.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/opengist\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-000000000082",
-      "enabled": true,
-      "domain": "k8s.main.cname-gist.example.com",
-      "type": "TXT_RECORD",
-      "text": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/opengist\""
-    },
-    {
-      "id": "00000000-0000-0000-0000-9000000000a1",
-      "enabled": true,
-      "type": "FORWARD_DOMAIN",
-      "domain": "internal.example.com",
-      "ipAddress": "10.0.0.53"
-    }
-  ]
-}
+[
+  {
+    "_id": "00000000-0000-0000-0000-000000000001",
+    "enabled": true,
+    "key": "unifi.example.com",
+    "record_type": "A",
+    "value": "192.0.2.1",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000002",
+    "enabled": true,
+    "key": "k8s.internal",
+    "record_type": "CNAME",
+    "value": "k8s.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000003",
+    "enabled": true,
+    "key": "k8s.example.com",
+    "record_type": "A",
+    "value": "198.51.100.120",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000004",
+    "enabled": true,
+    "key": "k8s.main.a-k8s.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=service/kube-system/kube-api\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000005",
+    "enabled": true,
+    "key": "smtp-relay.example.com",
+    "record_type": "A",
+    "value": "198.51.100.122",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000006",
+    "enabled": true,
+    "key": "k8s.main.a-smtp-relay.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=service/default/smtp-relay\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000007",
+    "enabled": true,
+    "key": "flux-webhook.example.com",
+    "record_type": "CNAME",
+    "value": "external.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000008",
+    "enabled": true,
+    "key": "external.example.com",
+    "record_type": "A",
+    "value": "198.51.100.126",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000009",
+    "enabled": true,
+    "key": "internal.example.com",
+    "record_type": "A",
+    "value": "198.51.100.121",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000010",
+    "enabled": true,
+    "key": "status.example.com",
+    "record_type": "CNAME",
+    "value": "external.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000011",
+    "enabled": true,
+    "key": "go2rtc.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000012",
+    "enabled": true,
+    "key": "flux-operator.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000013",
+    "enabled": true,
+    "key": "kromgo.example.com",
+    "record_type": "CNAME",
+    "value": "external.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000014",
+    "enabled": true,
+    "key": "gatus.example.com",
+    "record_type": "CNAME",
+    "value": "external.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000015",
+    "enabled": true,
+    "key": "echo.example.com",
+    "record_type": "CNAME",
+    "value": "external.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000016",
+    "enabled": true,
+    "key": "k8s.main.cname-flux-webhook.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/flux-system/github-webhook\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000017",
+    "enabled": true,
+    "key": "k8s.main.a-external.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=service/network/envoy-external\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000018",
+    "enabled": true,
+    "key": "k8s.main.a-internal.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=service/network/envoy-internal\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000019",
+    "enabled": true,
+    "key": "k8s.main.cname-status.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/o11y/gatus\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000020",
+    "enabled": true,
+    "key": "k8s.main.cname-go2rtc.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/go2rtc\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000021",
+    "enabled": true,
+    "key": "k8s.main.cname-flux-operator.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/flux-system/flux-operator\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000022",
+    "enabled": true,
+    "key": "k8s.main.cname-kromgo.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/o11y/kromgo\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000023",
+    "enabled": true,
+    "key": "k8s.main.cname-gatus.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/o11y/gatus\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000024",
+    "enabled": true,
+    "key": "k8s.main.cname-echo.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/network/echo\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000025",
+    "enabled": true,
+    "key": "kopia.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000026",
+    "enabled": true,
+    "key": "rook.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000027",
+    "enabled": true,
+    "key": "k8s.main.cname-kopia.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/volsync-system/kopia\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000028",
+    "enabled": true,
+    "key": "k8s.main.cname-rook.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/rook-ceph/rook-ceph-dashboard\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000029",
+    "enabled": true,
+    "key": "thelounge.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000030",
+    "enabled": true,
+    "key": "mosquitto.example.com",
+    "record_type": "A",
+    "value": "198.51.100.129",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000031",
+    "enabled": true,
+    "key": "sonarr.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000032",
+    "enabled": true,
+    "key": "prowlarr.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000033",
+    "enabled": true,
+    "key": "atuin.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000034",
+    "enabled": true,
+    "key": "vlogs.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000035",
+    "enabled": true,
+    "key": "qui.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000036",
+    "enabled": true,
+    "key": "grafana.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000037",
+    "enabled": true,
+    "key": "k8s.main.cname-thelounge.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/thelounge\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000038",
+    "enabled": true,
+    "key": "k8s.main.a-mosquitto.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=service/default/mosquitto\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000039",
+    "enabled": true,
+    "key": "k8s.main.cname-sonarr.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/sonarr\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000040",
+    "enabled": true,
+    "key": "k8s.main.cname-prowlarr.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/prowlarr\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000041",
+    "enabled": true,
+    "key": "k8s.main.cname-atuin.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/atuin\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000042",
+    "enabled": true,
+    "key": "k8s.main.cname-vlogs.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/o11y/victoria-logs\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000043",
+    "enabled": true,
+    "key": "k8s.main.cname-qui.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/qui\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000044",
+    "enabled": true,
+    "key": "k8s.main.cname-grafana.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/o11y/grafana-httproute\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000045",
+    "enabled": true,
+    "key": "zwave.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000046",
+    "enabled": true,
+    "key": "bazarr.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000047",
+    "enabled": true,
+    "key": "k8s.main.cname-zwave.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/zwave\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000048",
+    "enabled": true,
+    "key": "k8s.main.cname-bazarr.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/bazarr\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000049",
+    "enabled": true,
+    "key": "agregarr.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000050",
+    "enabled": true,
+    "key": "qbittorrent.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000051",
+    "enabled": true,
+    "key": "k8s.main.cname-agregarr.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/agregarr\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000052",
+    "enabled": true,
+    "key": "k8s.main.cname-qbittorrent.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/qbittorrent\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000053",
+    "enabled": true,
+    "key": "requests.example.com",
+    "record_type": "CNAME",
+    "value": "external.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000054",
+    "enabled": true,
+    "key": "seerr.example.com",
+    "record_type": "CNAME",
+    "value": "external.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000055",
+    "enabled": true,
+    "key": "k8s.main.cname-requests.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/seerr\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000056",
+    "enabled": true,
+    "key": "k8s.main.cname-seerr.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/seerr\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000057",
+    "enabled": true,
+    "key": "radarr.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000058",
+    "enabled": true,
+    "key": "k8s.main.cname-radarr.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/radarr\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000059",
+    "enabled": true,
+    "key": "sabnzbd.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000060",
+    "enabled": true,
+    "key": "k8s.main.cname-sabnzbd.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/sabnzbd\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000061",
+    "enabled": true,
+    "key": "zigbee.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000062",
+    "enabled": true,
+    "key": "autobrr.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000063",
+    "enabled": true,
+    "key": "tautulli.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000064",
+    "enabled": true,
+    "key": "k8s.main.cname-zigbee.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/zigbee\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000065",
+    "enabled": true,
+    "key": "k8s.main.cname-autobrr.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/autobrr\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000066",
+    "enabled": true,
+    "key": "k8s.main.cname-tautulli.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/tautulli\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000067",
+    "enabled": true,
+    "key": "plex.example.com",
+    "record_type": "CNAME",
+    "value": "external.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000068",
+    "enabled": true,
+    "key": "home-assistant.example.com",
+    "record_type": "CNAME",
+    "value": "external.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000069",
+    "enabled": true,
+    "key": "hass.example.com",
+    "record_type": "CNAME",
+    "value": "external.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000070",
+    "enabled": true,
+    "key": "slskd.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000071",
+    "enabled": true,
+    "key": "k8s.main.cname-plex.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/plex\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000072",
+    "enabled": true,
+    "key": "k8s.main.cname-home-assistant.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/home-assistant\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000073",
+    "enabled": true,
+    "key": "k8s.main.cname-hass.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/home-assistant\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000074",
+    "enabled": true,
+    "key": "k8s.main.cname-slskd.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/slskd\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000075",
+    "enabled": true,
+    "key": "prometheus.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000076",
+    "enabled": true,
+    "key": "alertmanager.example.com",
+    "record_type": "CNAME",
+    "value": "internal.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000077",
+    "enabled": true,
+    "key": "k8s.main.cname-prometheus.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/o11y/kube-prometheus-stack-prometheus\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000078",
+    "enabled": true,
+    "key": "k8s.main.cname-alertmanager.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/o11y/kube-prometheus-stack-alertmanager\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000079",
+    "enabled": true,
+    "key": "opengist.example.com",
+    "record_type": "CNAME",
+    "value": "external.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000080",
+    "enabled": true,
+    "key": "gist.example.com",
+    "record_type": "CNAME",
+    "value": "external.example.com",
+    "ttl": 0
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000081",
+    "enabled": true,
+    "key": "k8s.main.cname-opengist.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/opengist\""
+  },
+  {
+    "_id": "00000000-0000-0000-0000-000000000082",
+    "enabled": true,
+    "key": "k8s.main.cname-gist.example.com",
+    "record_type": "TXT",
+    "value": "\"heritage=external-dns,external-dns/owner=main,external-dns/resource=httproute/default/opengist\""
+  }
+]

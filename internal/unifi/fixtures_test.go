@@ -27,8 +27,7 @@ func isDataError(err error) bool {
 }
 
 // fixture reads a captured response from internal/unifi/testdata. Files were
-// originally captured from a real UniFi Network controller and then rewritten
-// into the v10.3.58 Integration API page envelope shape.
+// captured from a real UniFi Network controller and anonymised.
 func fixture(t *testing.T, name string) []byte {
 	t.Helper()
 	path := filepath.Join("testdata", name)
@@ -40,13 +39,13 @@ func fixture(t *testing.T, name string) []byte {
 	return data
 }
 
-// testClient builds an httpClient pointed at srv with siteID pre-resolved, so
-// tests skip the startup site-resolution round trip.
+// testClient builds an httpClient pointed at srv with the site name
+// pre-resolved, so tests skip the startup site-resolution round trip.
 func testClient(srv *httptest.Server, cfg *Config) *httpClient {
 	httpc := srv.Client()
 	httpc.Timeout = cfg.RequestTimeout
 
-	return &httpClient{cfg: cfg, httpc: httpc, siteID: testSiteUUID}
+	return &httpClient{cfg: cfg, httpc: httpc, siteName: testSite}
 }
 
 func fixtureClient(t *testing.T, handler http.HandlerFunc) (*httpClient, func()) {
@@ -58,7 +57,6 @@ func fixtureClient(t *testing.T, handler http.HandlerFunc) (*httpClient, func())
 
 // TestGetEndpoints_RealFixture replays a captured response from a real UniFi
 // controller and asserts that the client parses every entry without loss.
-// FORWARD_DOMAIN entries are filtered out by the converter.
 func TestGetEndpoints_RealFixture(t *testing.T) {
 	body := fixture(t, "records_list.json")
 
@@ -154,16 +152,19 @@ func TestSitesFixture(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(body)
 	})
-	// Clear pre-set siteID so we exercise the resolver path.
-	c.siteID = ""
+	// Clear pre-set siteName so we exercise the resolver path.
+	c.siteName = ""
 	defer cleanup()
 
-	id, err := c.resolveSite(context.Background(), "default")
+	site, err := c.resolveSite(context.Background(), "default")
 	if err != nil {
 		t.Fatalf("resolveSite: %v", err)
 	}
-	if id != testSiteUUID {
-		t.Errorf("siteID = %q, want %q", id, testSiteUUID)
+	if site.ID != testSiteUUID {
+		t.Errorf("site.ID = %q, want %q", site.ID, testSiteUUID)
+	}
+	if site.InternalReference != testSite {
+		t.Errorf("site.InternalReference = %q, want %q", site.InternalReference, testSite)
 	}
 }
 

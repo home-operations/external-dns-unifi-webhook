@@ -459,7 +459,7 @@ func TestDoRequest_FinalAttempt429IsCounted(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	rateLimits := metrics.Get().UniFiRateLimitsTotal.WithLabelValues(metrics.ProviderName, "dns_policies")
+	rateLimits := metrics.Get().UniFiRateLimitsTotal.WithLabelValues(metrics.ProviderName, "static_dns")
 	read := func() float64 {
 		t.Helper()
 		var dm dto.Metric
@@ -473,7 +473,7 @@ func TestDoRequest_FinalAttempt429IsCounted(t *testing.T) {
 
 	c := newRetryClient(t, srv, &Config{RetryAttempts: 1})
 	_, err := c.doRequest(context.Background(), http.MethodGet,
-		srv.URL+"/proxy/network/integration/v1/sites/x/dns/policies", nil)
+		srv.URL+"/proxy/network/v2/api/site/default/static-dns", nil)
 	if err == nil {
 		t.Fatal("expected an error from an all-429 upstream")
 	}

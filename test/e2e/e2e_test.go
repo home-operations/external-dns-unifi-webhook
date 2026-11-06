@@ -33,7 +33,7 @@ const (
 
 	mockSiteUUID = "11111111-2222-3333-4444-555555555555"
 	sitesPath    = "/proxy/network/integration/v1/sites"
-	policiesPath = "/proxy/network/integration/v1/sites/" + mockSiteUUID + "/dns/policies"
+	recordsPath  = "/proxy/network/v2/api/site/default/static-dns"
 )
 
 type harness struct {
@@ -129,10 +129,10 @@ func pickFreePort(t *testing.T) int {
 	return l.Addr().(*net.TCPAddr).Port
 }
 
-// startMockUniFi returns a httptest server that mimics the UniFi Network
-// v10.3.58 Integration API: /v1/sites for site resolution, and the paginated
-// /dns/policies endpoints for the actual record store. Hits are tracked so
-// tests can assert the binary actually called upstream.
+// startMockUniFi returns a httptest server that mimics a UniFi Network
+// controller: the Integration API's /v1/sites for site resolution, and the
+// /v2/api/site/{site}/static-dns endpoints for the actual record store. Hits
+// are tracked so tests can assert the binary actually called upstream.
 func startMockUniFi(t *testing.T, hits *atomic.Int32) *httptest.Server {
 	t.Helper()
 
@@ -157,7 +157,7 @@ func startMockUniFi(t *testing.T, hits *atomic.Int32) *httptest.Server {
 	})
 
 	// List/create — at the collection URL.
-	mux.HandleFunc(policiesPath, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(recordsPath, func(w http.ResponseWriter, r *http.Request) {
 		hits.Add(1)
 		w.Header().Set("Content-Type", "application/json")
 
@@ -169,27 +169,23 @@ func startMockUniFi(t *testing.T, hits *atomic.Int32) *httptest.Server {
 				records = append(records, v)
 			}
 			mu.Unlock()
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"offset": 0, "limit": 200,
-				"count": len(records), "totalCount": len(records),
-				"data": records,
-			})
+			_ = json.NewEncoder(w).Encode(records)
 
 		case http.MethodPost:
-			var env map[string]any
-			if err := json.NewDecoder(r.Body).Decode(&env); err != nil {
+			var rec map[string]any
+			if err := json.NewDecoder(r.Body).Decode(&rec); err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 
 				return
 			}
 			mu.Lock()
 			nextID++
-			id := fmt.Sprintf("00000000-0000-0000-0000-%012d", nextID)
-			env["id"] = id
-			store[id] = env
+			id := fmt.Sprintf("%024d", nextID)
+			rec["_id"] = id
+			store[id] = rec
 			mu.Unlock()
-			w.WriteHeader(http.StatusCreated)
-			_ = json.NewEncoder(w).Encode(env)
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(rec)
 
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
@@ -197,7 +193,7 @@ func startMockUniFi(t *testing.T, hits *atomic.Int32) *httptest.Server {
 	})
 
 	// Delete — at the per-record URL.
-	mux.HandleFunc(policiesPath+"/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(recordsPath+"/", func(w http.ResponseWriter, r *http.Request) {
 		hits.Add(1)
 		w.Header().Set("Content-Type", "application/json")
 
@@ -207,7 +203,7 @@ func startMockUniFi(t *testing.T, hits *atomic.Int32) *httptest.Server {
 			return
 		}
 
-		id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, policiesPath+"/"), "/")
+		id := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, recordsPath+"/"), "/")
 		mu.Lock()
 		_, ok := store[id]
 		if ok {

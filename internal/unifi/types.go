@@ -52,10 +52,10 @@ type Config struct {
 // operator's explicit opt-in to the cloud path.
 func (c Config) isCloud() bool { return c.ConsoleID != "" }
 
-// baseURL returns the URL prefix that every Integration API path is appended
-// to. In cloud mode the request is routed through api.ui.com's per-console
-// connector proxy; otherwise it hits the controller's own reverse proxy. The
-// Integration API surface past this prefix is identical for both.
+// baseURL returns the URL prefix that every API path is appended to. In cloud
+// mode the request is routed through api.ui.com's per-console connector proxy;
+// otherwise it hits the controller's own reverse proxy. The API surface past
+// this prefix is identical for both.
 func (c Config) baseURL() string {
 	host := strings.TrimRight(c.Host, "/")
 	if !c.isCloud() {
@@ -123,7 +123,10 @@ type DNSRecord struct {
 	Value      string
 }
 
-// apiErrorResponse matches the Integration API error envelope.
+// apiErrorResponse matches the Integration API error envelope. The /static-dns
+// endpoints use a different envelope ({code, errorCode, message, details})
+// whose code and message fields decode into the same struct, which is all
+// formatAPIError needs.
 //
 //nolint:tagliatelle // UniFi API field names cannot be changed
 type apiErrorResponse struct {

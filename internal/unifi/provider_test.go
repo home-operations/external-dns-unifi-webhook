@@ -32,18 +32,18 @@ func TestApplyChanges_DeletesShareSnapshot(t *testing.T) {
 		seenIDs     sync.Map
 	)
 
-	existing := []dnsPolicyEnvelope{
-		envA("id-a-1", "a.example.com", "192.0.2.1", 300),
-		envA("id-a-2", "a.example.com", "192.0.2.2", 300), // same key+type, two IDs
-		envA("id-b-1", "b.example.com", "192.0.2.3", 300),
-		envA("id-c-1", "c.example.com", "192.0.2.4", 300),
+	existing := []staticDNSRecord{
+		recA("id-a-1", "a.example.com", "192.0.2.1", 300),
+		recA("id-a-2", "a.example.com", "192.0.2.2", 300), // same key+type, two IDs
+		recA("id-b-1", "b.example.com", "192.0.2.3", 300),
+		recA("id-c-1", "c.example.com", "192.0.2.4", 300),
 	}
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			getCount.Add(1)
-			_ = json.NewEncoder(w).Encode(pageOf(existing...))
+			_ = json.NewEncoder(w).Encode(listOf(existing...))
 		case http.MethodDelete:
 			deleteCount.Add(1)
 			// Capture which ID was hit so we can assert exact targeting.
@@ -85,15 +85,15 @@ func TestApplyChanges_CNAMEConflictUsesSnapshot(t *testing.T) {
 		createCount atomic.Int32
 	)
 
-	existing := []dnsPolicyEnvelope{
-		envCNAME("old-cname", "alias.example.com", "old.target.example.com", 300),
+	existing := []staticDNSRecord{
+		recCNAME("old-cname", "alias.example.com", "old.target.example.com", 300),
 	}
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			getCount.Add(1)
-			_ = json.NewEncoder(w).Encode(pageOf(existing...))
+			_ = json.NewEncoder(w).Encode(listOf(existing...))
 		case http.MethodPost:
 			createCount.Add(1)
 			body, _ := io.ReadAll(r.Body)
@@ -134,10 +134,10 @@ func TestApplyChanges_CNAMEConflictUsesSnapshot(t *testing.T) {
 // the stale GaugeVec child (issue #218) — Records seeds every managed type at
 // zero so a vanished type is explicitly Set(0).
 func TestRecords_ResetsStalePerTypeGauge(t *testing.T) {
-	var page atomic.Pointer[dnsPolicyPage]
-	first := pageOf(
-		envA("id-1", "a.example.com", "192.0.2.1", 300),
-		envA("id-2", "b.example.com", "192.0.2.2", 300),
+	var page atomic.Pointer[[]staticDNSRecord]
+	first := listOf(
+		recA("id-1", "a.example.com", "192.0.2.1", 300),
+		recA("id-2", "b.example.com", "192.0.2.2", 300),
 	)
 	page.Store(&first)
 
@@ -166,7 +166,7 @@ func TestRecords_ResetsStalePerTypeGauge(t *testing.T) {
 	}
 
 	// All A records deleted upstream.
-	empty := pageOf()
+	empty := listOf()
 	page.Store(&empty)
 	if _, err := p.Records(context.Background()); err != nil {
 		t.Fatalf("Records (after deletion): %v", err)
@@ -183,9 +183,9 @@ func TestRecords_ResetsStalePerTypeGauge(t *testing.T) {
 // to "host.example.comAAAA" and were merged into a single endpoint (the second
 // type silently dropped). They must come back as two distinct endpoints.
 func TestRecords_DistinguishesCollidingKeys(t *testing.T) {
-	existing := pageOf(
-		envA("id-a", "host.example.comAAA", "192.0.2.1", 300),
-		envAAAA("id-aaaa", "host.example.com", "2001:db8::1", 300),
+	existing := listOf(
+		recA("id-a", "host.example.comAAA", "192.0.2.1", 300),
+		recAAAA("id-aaaa", "host.example.com", "2001:db8::1", 300),
 	)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_ = json.NewEncoder(w).Encode(existing)
@@ -220,16 +220,16 @@ func TestRecords_DistinguishesCollidingKeys(t *testing.T) {
 // "host.example.com"/AAAA both concatenated to "host.example.comAAAA", so
 // deleting the A record used to delete the AAAA record's ID as collateral.
 func TestApplyChanges_DeleteDoesNotCollideAcrossTypes(t *testing.T) {
-	existing := []dnsPolicyEnvelope{
-		envA("id-a", "host.example.comAAA", "192.0.2.1", 300),
-		envAAAA("id-aaaa", "host.example.com", "2001:db8::1", 300),
+	existing := []staticDNSRecord{
+		recA("id-a", "host.example.comAAA", "192.0.2.1", 300),
+		recAAAA("id-aaaa", "host.example.com", "2001:db8::1", 300),
 	}
 
 	var deleted sync.Map
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			_ = json.NewEncoder(w).Encode(pageOf(existing...))
+			_ = json.NewEncoder(w).Encode(listOf(existing...))
 		case http.MethodDelete:
 			deleted.Store(path.Base(r.URL.Path), struct{}{})
 			w.WriteHeader(http.StatusOK)
@@ -253,14 +253,14 @@ func TestApplyChanges_DeleteDoesNotCollideAcrossTypes(t *testing.T) {
 	}
 }
 
-// TestRecords_ExcludesDisabledRecords proves a policy disabled in the UniFi UI
+// TestRecords_ExcludesDisabledRecords proves a record disabled in the UniFi UI
 // is not reported as a managed endpoint (#221): external-dns must not believe a
 // parked record is live.
 func TestRecords_ExcludesDisabledRecords(t *testing.T) {
-	disabled := envA("id-off", "off.example.com", "192.0.2.8", 300)
+	disabled := recA("id-off", "off.example.com", "192.0.2.8", 300)
 	disabled.Enabled = false
-	existing := pageOf(
-		envA("id-on", "on.example.com", "192.0.2.1", 300),
+	existing := listOf(
+		recA("id-on", "on.example.com", "192.0.2.1", 300),
 		disabled,
 	)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -330,15 +330,15 @@ func TestAdjustEndpoints_ClearsTTLForControllerManagedTypes(t *testing.T) {
 // 404ed on every CNAME target change.
 func TestApplyChanges_CNAMEUpdateIsNotAConflict(t *testing.T) {
 	var deleteCount, notFoundServed atomic.Int32
-	existing := []dnsPolicyEnvelope{
-		envCNAME("old-cname", "alias.example.com", "old.target.example.com", 300),
+	existing := []staticDNSRecord{
+		recCNAME("old-cname", "alias.example.com", "old.target.example.com", 300),
 	}
 	var deletedOnce atomic.Bool
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			_ = json.NewEncoder(w).Encode(pageOf(existing...))
+			_ = json.NewEncoder(w).Encode(listOf(existing...))
 		case http.MethodPost:
 			body, _ := io.ReadAll(r.Body)
 			w.WriteHeader(http.StatusOK)

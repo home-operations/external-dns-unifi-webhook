@@ -39,26 +39,6 @@ type staticDNSRecord struct {
 	Weight   *int `json:"weight,omitempty"`
 }
 
-// apiPage is the paginated list envelope the Integration API returns for its
-// collection endpoints. Data carries the per-endpoint entry type.
-type apiPage[T any] struct {
-	Offset     int `json:"offset"`
-	Limit      int `json:"limit"`
-	Count      int `json:"count"`
-	TotalCount int `json:"totalCount"`
-	Data       []T `json:"data"`
-}
-
-// sitePage is the envelope returned by GET /sites.
-type sitePage = apiPage[siteEntry]
-
-//nolint:tagliatelle // UniFi API field names cannot be changed
-type siteEntry struct {
-	ID                string `json:"id"`
-	InternalReference string `json:"internalReference"`
-	Name              string `json:"name"`
-}
-
 // toDNSRecord converts a wire record into the internal DNSRecord shape.
 // ok=false means the record should be skipped: a disabled record (not serving
 // DNS) or a record type we don't manage.

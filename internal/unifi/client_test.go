@@ -28,9 +28,9 @@ const (
 	testDomain = "test.example.com"
 )
 
-// newTestClient builds an httpClient pointed at the given test server, with
-// the site name already resolved. Real client construction goes through
-// resolveSite; tests skip that by populating siteName directly.
+// newTestClient builds an httpClient pointed at the given test server. Real
+// client construction goes through newUnifiClient's startup probe; tests skip
+// that by populating siteName directly.
 func newTestClient(srv *httptest.Server) *httpClient {
 	return testClient(srv, &Config{
 		Host:          srv.URL,
@@ -488,105 +488,6 @@ func TestDeleteRecord(t *testing.T) {
 	}
 }
 
-// TestResolveSite covers the startup site lookup, including the
-// internalReference / UUID heuristic and the empty/multi-match error paths.
-func TestResolveSite(t *testing.T) {
-	tests := []struct {
-		name       string
-		ref        string
-		data       []siteEntry
-		wantField  string // "internalReference" or "id"
-		wantFilter string // exact filter expression, when escaping matters
-		wantID     string
-		wantName   string
-		wantErr    bool
-	}{
-		{
-			name:      "by name resolves to UUID",
-			ref:       "default",
-			data:      []siteEntry{{ID: testSiteUUID, InternalReference: "default", Name: "Default"}},
-			wantField: "internalReference",
-			wantID:    testSiteUUID,
-			wantName:  testSite,
-		},
-		{
-			name:       "single quote in site name is doubled",
-			ref:        "o'brien",
-			data:       []siteEntry{{ID: testSiteUUID, InternalReference: "o'brien", Name: "O'Brien"}},
-			wantFilter: "internalReference.eq('o''brien')",
-			wantID:     testSiteUUID,
-			wantName:   "o'brien",
-		},
-		{
-			name:      "UUID input filters by id and yields the site name",
-			ref:       testSiteUUID,
-			data:      []siteEntry{{ID: testSiteUUID, InternalReference: "default", Name: "Default"}},
-			wantField: "id",
-			wantID:    testSiteUUID,
-			wantName:  testSite,
-		},
-		{
-			name:    "no match errors",
-			ref:     "missing",
-			data:    []siteEntry{},
-			wantErr: true,
-		},
-		{
-			name: "multi match errors",
-			ref:  "default",
-			data: []siteEntry{
-				{ID: testSiteUUID, InternalReference: "default", Name: "A"},
-				{ID: "22222222-2222-2222-2222-222222222222", InternalReference: "default", Name: "B"},
-			},
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var capturedFilter string
-			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				capturedFilter = r.URL.Query().Get("filter")
-				_ = json.NewEncoder(w).Encode(sitePage{
-					Offset: 0, Limit: 25,
-					Count: len(tt.data), TotalCount: len(tt.data),
-					Data: tt.data,
-				})
-			}))
-			defer srv.Close()
-
-			c := &httpClient{
-				cfg:   &Config{Host: srv.URL, APIKey: testKeyA, SkipTLSVerify: true},
-				httpc: srv.Client(),
-			}
-
-			site, err := c.resolveSite(context.Background(), tt.ref)
-			if tt.wantErr {
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
-
-				return
-			}
-			if err != nil {
-				t.Fatalf("resolveSite: %v", err)
-			}
-			if site.ID != tt.wantID {
-				t.Errorf("site.ID = %q, want %q", site.ID, tt.wantID)
-			}
-			if site.InternalReference != tt.wantName {
-				t.Errorf("site.InternalReference = %q, want %q", site.InternalReference, tt.wantName)
-			}
-			if tt.wantField != "" && !strings.HasPrefix(capturedFilter, tt.wantField+".eq(") {
-				t.Errorf("filter = %q, expected prefix %s.eq(", capturedFilter, tt.wantField)
-			}
-			if tt.wantFilter != "" && capturedFilter != tt.wantFilter {
-				t.Errorf("filter = %q, want %q", capturedFilter, tt.wantFilter)
-			}
-		})
-	}
-}
-
 // TestCreateEndpoint_V2ErrorEnvelope verifies the /static-dns error shape
 // ({code, errorCode, message, details}) surfaces as an APIError that keeps the
 // controller's code and message, rather than the raw body.
@@ -616,15 +517,12 @@ func TestCreateEndpoint_V2ErrorEnvelope(t *testing.T) {
 	}
 }
 
-// TestNewUnifiClient_RoutesBySiteName exercises the real constructor: a UUID
-// in UNIFI_SITE is resolved through /sites to its internalReference, and that
-// name (not the UUID) is what the /static-dns paths carry, in both local and
-// cloud mode.
-func TestNewUnifiClient_RoutesBySiteName(t *testing.T) {
-	const (
-		siteUUID = "99999999-8888-7777-6666-555555555555"
-		siteName = "branch"
-	)
+// TestNewUnifiClient_ProbesSite exercises the real constructor: UNIFI_SITE
+// goes into the /static-dns path as-is, the constructor lists that path once
+// as a startup probe, and a probe failure fails construction. Both local and
+// cloud mode are covered.
+func TestNewUnifiClient_ProbesSite(t *testing.T) {
+	const siteName = "branch"
 
 	for _, mode := range []struct {
 		name      string
@@ -639,23 +537,19 @@ func TestNewUnifiClient_RoutesBySiteName(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotPaths = append(gotPaths, r.Method+" "+r.URL.Path)
 				w.Header().Set(headerContentType, contentTypeJSON)
-				switch {
-				case strings.HasSuffix(r.URL.Path, "/integration/v1/sites"):
-					_ = json.NewEncoder(w).Encode(sitePage{Count: 1, TotalCount: 1, Data: []siteEntry{
-						{ID: siteUUID, InternalReference: siteName, Name: "Branch"},
-					}})
-				case r.Method == http.MethodGet:
-					_ = json.NewEncoder(w).Encode(listOf())
-				case r.Method == http.MethodPost:
+				switch r.Method {
+				case http.MethodGet:
+					_ = json.NewEncoder(w).Encode(listOf(recA(testDNSID1, testDomain, testIPv4A, 300)))
+				case http.MethodPost:
 					_ = json.NewEncoder(w).Encode(recA(testDNSID1, testDomain, testIPv4A, 300))
-				case r.Method == http.MethodDelete:
+				case http.MethodDelete:
 					w.WriteHeader(http.StatusOK)
 				}
 			}))
 			defer srv.Close()
 
 			c, err := newUnifiClient(&Config{
-				Host: srv.URL, Site: siteUUID, APIKey: testKeyA, ConsoleID: mode.consoleID,
+				Host: srv.URL, Site: siteName, APIKey: testKeyA, ConsoleID: mode.consoleID,
 				RetryAttempts: 1, RetryInitialDelay: time.Millisecond, RetryMaxDelay: time.Millisecond,
 			})
 			if err != nil {
@@ -666,9 +560,6 @@ func TestNewUnifiClient_RoutesBySiteName(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			if _, err := c.GetEndpoints(ctx); err != nil {
-				t.Fatalf("GetEndpoints: %v", err)
-			}
 			ep := endpoint.NewEndpointWithTTL(testDomain, recordTypeA, 300, testIPv4A)
 			if _, err := c.CreateEndpoint(ctx, ep); err != nil {
 				t.Fatalf("CreateEndpoint: %v", err)
@@ -679,7 +570,6 @@ func TestNewUnifiClient_RoutesBySiteName(t *testing.T) {
 
 			records := mode.prefix + "/proxy/network/v2/api/site/" + siteName + "/static-dns"
 			want := []string{
-				"GET " + mode.prefix + "/proxy/network/integration/v1/sites",
 				"GET " + records,
 				"POST " + records,
 				"DELETE " + records + "/" + testDNSID1,
@@ -689,6 +579,46 @@ func TestNewUnifiClient_RoutesBySiteName(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("site name is escaped as one path segment", func(t *testing.T) {
+		var gotPath string
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotPath = r.URL.EscapedPath()
+			w.Header().Set(headerContentType, contentTypeJSON)
+			_ = json.NewEncoder(w).Encode(listOf())
+		}))
+		defer srv.Close()
+
+		if _, err := newUnifiClient(&Config{
+			Host: srv.URL, Site: "br anch/x?y#z", APIKey: testKeyA,
+			RetryAttempts: 1, RetryInitialDelay: time.Millisecond, RetryMaxDelay: time.Millisecond,
+		}); err != nil {
+			t.Fatalf("newUnifiClient: %v", err)
+		}
+		if want := "/proxy/network/v2/api/site/br%20anch%2Fx%3Fy%23z/static-dns"; gotPath != want {
+			t.Errorf("probe path = %q, want %q", gotPath, want)
+		}
+	})
+
+	t.Run("probe failure fails construction", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set(headerContentType, contentTypeJSON)
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte(`{"code":"api.err.LoginRequired","errorCode":401,"message":"Login required"}`))
+		}))
+		defer srv.Close()
+
+		_, err := newUnifiClient(&Config{
+			Host: srv.URL, Site: testSite, APIKey: testKeyA,
+			RetryAttempts: 1, RetryInitialDelay: time.Millisecond, RetryMaxDelay: time.Millisecond,
+		})
+		if err == nil {
+			t.Fatal("expected construction to fail on a 401 probe")
+		}
+		if !strings.Contains(err.Error(), "probing UNIFI_SITE") || !strings.Contains(err.Error(), "Login required") {
+			t.Errorf("error = %q, want the probe context and the controller message", err)
+		}
+	})
 }
 
 // TestSetHeaders verifies the API-key auth header and standard JSON headers.
@@ -753,12 +683,12 @@ func TestDecodeJSON_RejectsOversizedBody(t *testing.T) {
 func TestDecodeJSON_AcceptsBodyAtLimit(t *testing.T) {
 	defer func(orig int64) { maxResponseBytes = orig }(maxResponseBytes)
 
-	body := `{}`
+	body := `[]`
 	maxResponseBytes = int64(len(body)) // exactly at the cap
 
 	resp := &http.Response{Body: io.NopCloser(strings.NewReader(body))}
-	var dest sitePage
-	if _, err := decodeJSON(resp, "sites", &dest); err != nil {
+	var dest []staticDNSRecord
+	if _, err := decodeJSON(resp, "DNS records", &dest); err != nil {
 		t.Fatalf("body exactly at the limit should decode, got: %v", err)
 	}
 }

@@ -1,5 +1,0 @@
-status:       200
-content_type: application/json
-url:          https://unifi.example.com/proxy/network/integration/v1/sites?filter=internalReference.eq('default')
-note:         Synthetic. Site UUID is a placeholder used wherever the tests
-              need to call the policy endpoints after site resolution.

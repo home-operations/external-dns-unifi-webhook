@@ -13,11 +13,11 @@ A webhook provider for [ExternalDNS](https://github.com/kubernetes-sigs/external
 | ------------- | --------------- |
 | ExternalDNS   | v0.21.0         |
 | UniFi OS      | 5.x             |
-| UniFi Network | 10.3.58         |
+| UniFi Network | 9.0.0           |
 
 ## How it works
 
-The provider runs as a sidecar next to the ExternalDNS controller. It speaks the ExternalDNS webhook protocol on one side and the UniFi Network API on the other. Records go through `/proxy/network/v2/api/site/{site}/static-dns`. At startup, the provider resolves the site name once through the `/proxy/network/integration/v1/sites` endpoint of the [Integration API](https://developer.ui.com/network/). Ubiquiti does not document the `static-dns` endpoints. Unlike the DNS Policies endpoints of the Integration API, they accept names whose labels start with an underscore, for example the RFC 9462 DDR name `_dns.resolver.arpa`.
+The provider runs as a sidecar next to the ExternalDNS controller. It speaks the ExternalDNS webhook protocol on one side and the UniFi Network API on the other. Records go through `/proxy/network/v2/api/site/{site}/static-dns`. At startup, the provider lists that path once, so a bad host, a bad key, or an unknown site fails before the first reconcile. Ubiquiti does not document the `static-dns` endpoints. Unlike the DNS Policies endpoints of the [Integration API](https://developer.ui.com/network/), they accept names whose labels start with an underscore, for example the RFC 9462 DDR name `_dns.resolver.arpa`.
 
 The provider reaches UniFi in one of two ways:
 
@@ -124,7 +124,7 @@ See the [chart values](https://github.com/kubernetes-sigs/external-dns/blob/mast
 | --------------------------- | ------------------------------------------------------------------------------------- | --------- |
 | `UNIFI_HOST`                | Controller address, or `https://api.ui.com` for the cloud connector (**required**).   | —         |
 | `UNIFI_API_KEY`             | API key used to authenticate (**required**). Local and cloud keys differ — see below. | —         |
-| `UNIFI_SITE`                | Site name (for example `default`) or site UUID. Resolved to the site name at startup. | `default` |
+| `UNIFI_SITE`                | Site name, as shown in the console URL `/manage/site/<name>/`.                        | `default` |
 | `UNIFI_CONSOLE_ID`          | Console ID. Setting this routes requests through the `api.ui.com` cloud connector.    | —         |
 | `UNIFI_SKIP_TLS_VERIFY`     | Skip TLS verification. Ignored in cloud mode.                                         | `true`    |
 | `UNIFI_CA_CERT`             | Path to a PEM bundle of extra trusted CAs (alternative to skipping verification).     | —         |
@@ -194,9 +194,10 @@ The move to UniFi Network 10.3.58 introduced breaking changes:
 | `UNIFI_EXTERNAL_CONTROLLER`                                                                        | **Removed.** Point `UNIFI_HOST` at the controller directly, or use the [cloud connector](#cloud-connector) for remote consoles. |
 | `DOMAIN_FILTER`, `EXCLUDE_DOMAIN_FILTER`, `REGEXP_DOMAIN_FILTER`, `REGEXP_DOMAIN_FILTER_EXCLUSION` | **Removed.** Configure `--domain-filter` on the ExternalDNS controller instead (see [Domain filtering](#domain-filtering)).     |
 | `LOG_FORMAT=test`                                                                                  | **Renamed** to `LOG_FORMAT=text`.                                                                                               |
-| Site lookup                                                                                        | `UNIFI_SITE` is resolved through the official `/proxy/network/integration/v1/sites` endpoint (requires Network 10.3.58+).       |
 
 The move of records to the `static-dns` endpoints changed the `operation` label value on `externaldns_webhook_unifi_retries_total` and `externaldns_webhook_unifi_rate_limits_total` from `dns_policies` to `static_dns`. Update any alert or dashboard selectors that match the old value.
+
+The provider no longer uses the Integration API. `UNIFI_SITE` must be the site name, as shown in the console URL `/manage/site/<name>/`. A site UUID from the Integration API fails validation at startup. The minimum UniFi Network version is 9.0.0, the first release with API keys. The `static-dns` endpoints are tested on Network 10.x only; older releases that accept an API key are untested.
 
 ## Community
 

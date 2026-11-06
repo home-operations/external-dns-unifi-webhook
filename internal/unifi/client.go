@@ -9,8 +9,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"regexp"
-	"strings"
 	"time"
 
 	"github.com/home-operations/external-dns-unifi-webhook/internal/metrics"
@@ -18,9 +16,9 @@ import (
 	extdnshttp "sigs.k8s.io/external-dns/pkg/http"
 )
 
-// httpClient is the DNS provider client. siteName is the site's
-// internalReference (e.g. "default"), which is what the /static-dns paths key
-// on; it is resolved from UNIFI_SITE at startup.
+// httpClient is the DNS provider client. siteName is the site's short name
+// (e.g. "default"), already escaped for use as a path segment, which is what
+// the /static-dns paths key on.
 type httpClient struct {
 	cfg      *Config
 	httpc    *http.Client
@@ -35,10 +33,8 @@ type httpClient struct {
 // API rejects names whose labels start with an underscore (for example the
 // RFC 9462 DDR name _dns.resolver.arpa) with "domain must be valid domain",
 // while /static-dns accepts them and both are views over the same record
-// store. Site lookup stays on the Integration API because it is documented
-// and accepts either a name or a UUID.
+// store.
 const (
-	pathSites           = "%s/proxy/network/integration/v1/sites"
 	pathStaticDNS       = "%s/proxy/network/v2/api/site/%s/static-dns"
 	pathStaticDNSRecord = "%s/proxy/network/v2/api/site/%s/static-dns/%s"
 )
@@ -64,21 +60,21 @@ var managedRecordTypes = []string{
 	recordTypeMX, recordTypeSRV, recordTypeTXT,
 }
 
-// siteResolveBaseTimeout is the headroom the startup site-resolution probe
-// gets for the HTTP request(s) themselves. The effective timeout adds the
-// worst-case retry backoff budget on top (see siteResolveTimeoutFor), so a
-// broken controller still can't hang the process forever, but raising the
-// retry knobs never starves the probe mid-backoff.
-const siteResolveBaseTimeout = 15 * time.Second
+// startupProbeBaseTimeout is the headroom the startup probe gets for the HTTP
+// request(s) themselves. The effective timeout adds the worst-case retry
+// backoff budget on top (see startupProbeTimeoutFor), so a broken controller
+// still can't hang the process forever, but raising the retry knobs never
+// starves the probe mid-backoff.
+const startupProbeBaseTimeout = 15 * time.Second
 
-// siteResolveTimeoutFor returns how long the startup probe can run for the
+// startupProbeTimeoutFor returns how long the startup probe can run for the
 // given configuration: the fixed request headroom plus the worst-case time the
 // retry loop can spend in backoff. The limit comes from the retry
 // configuration rather than a fixed cap. An operator who raises
 // UNIFI_RETRY_ATTEMPTS to ride out a slow or rate-limiting controller then
 // does not trip a startup context deadline and crashloop on every restart.
-func siteResolveTimeoutFor(cfg *Config) time.Duration {
-	return siteResolveBaseTimeout + worstCaseRetryBudget(cfg)
+func startupProbeTimeoutFor(cfg *Config) time.Duration {
+	return startupProbeBaseTimeout + worstCaseRetryBudget(cfg)
 }
 
 // maxResponseBytes caps how much of a UniFi API response body we buffer into
@@ -90,11 +86,9 @@ func siteResolveTimeoutFor(cfg *Config) time.Duration {
 // fixtures.
 var maxResponseBytes int64 = 25 << 20 // 25 MiB
 
-var uuidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
-
-// newUnifiClient constructs a UniFi API client and resolves the site name (or
-// UUID) supplied via UNIFI_SITE to the site's internalReference at startup.
-// The probe also validates credentials early so misconfiguration fails fast.
+// newUnifiClient constructs a UniFi API client and lists the site's records
+// once at startup. The probe makes a bad host, a bad key, or an unknown
+// UNIFI_SITE fail fast instead of surfacing on the first reconcile.
 func newUnifiClient(config *Config) (*httpClient, error) {
 	transport, err := newHTTPTransport(config)
 	if err != nil {
@@ -113,53 +107,24 @@ func newUnifiClient(config *Config) (*httpClient, error) {
 	c := &httpClient{
 		cfg:   config,
 		httpc: &http.Client{Transport: transport, Timeout: config.RequestTimeout},
+		// Escape once here rather than at each URL build so a site name with
+		// a reserved character cannot change the path shape of every request.
+		siteName: url.PathEscape(config.Site),
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), siteResolveTimeoutFor(config))
+	ctx, cancel := context.WithTimeout(context.Background(), startupProbeTimeoutFor(config))
 	defer cancel()
-	site, err := c.resolveSite(ctx, config.Site)
+	records, err := c.GetEndpoints(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("resolving UNIFI_SITE %q: %w", config.Site, err)
+		return nil, fmt.Errorf("probing UNIFI_SITE %q: %w", config.Site, err)
 	}
-	c.siteName = site.InternalReference
-	slog.Info("resolved unifi site", "ref", config.Site, "id", site.ID, "name", site.InternalReference)
+	slog.Info("connected to unifi site", "site", config.Site, "records", len(records))
 
 	return c, nil
 }
 
-// resolveSite looks up a user-supplied site name (or UUID) via GET /v1/sites
-// with a filter. Accepts either the human-friendly internalReference (e.g.
-// "default") or a raw UUID — both are common ways people identify a site in
-// their environment.
-func (c *httpClient) resolveSite(ctx context.Context, ref string) (siteEntry, error) {
-	field := "internalReference"
-	if uuidRegex.MatchString(ref) {
-		field = "id"
-	}
-
-	// The Integration API filter DSL wraps string values in single quotes and
-	// escapes an embedded quote by doubling it. ref is operator-supplied
-	// (UNIFI_SITE), so quote it correctly rather than trusting its contents.
-	filter := fmt.Sprintf("%s.eq('%s')", field, strings.ReplaceAll(ref, "'", "''"))
-	u := formatURL(pathSites, c.cfg.baseURL()) + "?filter=" + url.QueryEscape(filter)
-
-	var page sitePage
-	if _, err := c.getJSON(ctx, u, "sites", &page); err != nil {
-		return siteEntry{}, err
-	}
-
-	switch len(page.Data) {
-	case 0:
-		return siteEntry{}, fmt.Errorf("no site matches %s=%q", field, ref)
-	case 1:
-		return page.Data[0], nil
-	default:
-		return siteEntry{}, fmt.Errorf("multiple sites match %s=%q (%d)", field, ref, len(page.Data))
-	}
-}
-
 // getJSON issues a GET, reads the body fully, and decodes it into dest. The
-// scope label is used in error messages ("DNS records", "sites", ...) so the
+// scope label is used in error messages ("DNS records", ...) so the
 // caller doesn't have to repeat it across read/unmarshal sites. Returns the
 // number of body bytes read for metric accounting.
 func (c *httpClient) getJSON(ctx context.Context, reqURL, scope string, dest any) (int, error) {

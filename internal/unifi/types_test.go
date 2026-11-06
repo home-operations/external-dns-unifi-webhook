@@ -47,6 +47,9 @@ func TestConfigValidate(t *testing.T) {
 			c.ConsoleID = testConsoleID
 		}, false},
 		{"console id with local host is fine", func(c *Config) { c.ConsoleID = testConsoleID }, false},
+		{"site empty", func(c *Config) { c.Site = "" }, true},
+		{"site is an Integration API UUID", func(c *Config) { c.Site = testSiteUUID }, true},
+		{"site with a dash is fine", func(c *Config) { c.Site = "branch-office" }, false},
 	}
 
 	for _, tt := range tests {

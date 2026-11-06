@@ -3,6 +3,7 @@ package unifi
 import (
 	"fmt"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -23,6 +24,11 @@ const (
 	// default is 500ms) while keeping base/2 safely positive.
 	minRetryInitialDelay = time.Millisecond
 )
+
+// siteUUIDRegex recognises the Integration API's site UUID form so Validate can
+// reject it with a pointer to the site name, instead of the controller
+// answering 404 on every request.
+var siteUUIDRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 // Config represents the configuration for the UniFi API.
 type Config struct {
@@ -87,6 +93,12 @@ func (c Config) Validate() error {
 	}
 	if cloudAPIHosts[u.Host] && c.ConsoleID == "" {
 		return fmt.Errorf("UNIFI_CONSOLE_ID is required when UNIFI_HOST points at the Ubiquiti cloud API (%q)", u.Host)
+	}
+	if c.Site == "" {
+		return fmt.Errorf("UNIFI_SITE must not be empty")
+	}
+	if siteUUIDRegex.MatchString(c.Site) {
+		return fmt.Errorf("UNIFI_SITE %q is a site UUID; use the site name from the console URL (/manage/site/<name>/), such as default", c.Site)
 	}
 	if c.RetryAttempts < 1 || c.RetryAttempts > maxRetryAttempts {
 		return fmt.Errorf("UNIFI_RETRY_ATTEMPTS must be between 1 and %d, got %d", maxRetryAttempts, c.RetryAttempts)

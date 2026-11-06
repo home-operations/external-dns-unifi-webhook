@@ -16,13 +16,13 @@ import (
 
 const defaultApplyWorkers = 5
 
-// recordKey identifies a record set by its DNS name and type. It is used as a
-// map key in place of string concatenation: concatenating r.Key+r.RecordType
-// is ambiguous because the type strings are not self-delimiting, so an A record
-// for the name "x.AAA" and an AAAA record for the name "x." both flatten to the
-// same "x.AAAA" string. That collision would group two unrelated records
-// together and, on the delete path, resolve one endpoint to the other's record
-// IDs — silently deleting a bystander. A struct key compares field-wise and
+// recordKey identifies a record set by its DNS name and type. It is a map key
+// in place of string concatenation. The concatenation r.Key+r.RecordType is
+// ambiguous because the type strings are not self-delimiting. An A record for
+// the name "x.AAA" and an AAAA record for the name "x." both flatten to the
+// same "x.AAAA" string. That collision groups two unrelated records together.
+// On the delete path, it resolves one endpoint to the record IDs of the other
+// and silently deletes a bystander. A struct key compares field by field and
 // cannot collide.
 type recordKey struct {
 	name       string
@@ -64,7 +64,7 @@ func NewUnifiProvider(config *Config) (provider.Provider, error) {
 
 // recordTypesWithoutCustomTTL are the record types whose TTL the UniFi
 // controller manages itself: it rejects a ttl sent for them, and only
-// A/AAAA/CNAME honour a custom value. fromDNSRecord already omits the TTL
+// A/AAAA/CNAME honor a custom value. fromDNSRecord already omits the TTL
 // on writes for these; AdjustEndpoints clears it from the desired set so it
 // can't drive perpetual reconcile churn. See #229.
 var recordTypesWithoutCustomTTL = map[string]struct{}{
@@ -73,14 +73,14 @@ var recordTypesWithoutCustomTTL = map[string]struct{}{
 	recordTypeSRV: {},
 }
 
-// AdjustEndpoints canonicalises the desired endpoints to what the UniFi
-// controller can actually represent. The controller manages the TTL for
-// TXT, MX, and SRV records itself and rejects any value sent for them. If a
-// user-set TTL is left on such an endpoint, external-dns compares it against
-// the controller-managed TTL on every reconcile, never reaches equality, and
-// churns delete+create forever. Clearing the TTL here makes the desired state
-// match what the controller will store, so the record converges. A/AAAA/CNAME
-// (which do honour a custom TTL) are left untouched. See #229.
+// AdjustEndpoints canonicalizes the desired endpoints to what the UniFi
+// controller can represent. The controller manages the TTL for TXT, MX, and
+// SRV records itself and rejects any value sent for them. If a user-set TTL
+// stays on such an endpoint, external-dns compares it with the TTL from the
+// controller on every reconcile. The two never match, so external-dns churns
+// delete+create forever. A cleared TTL makes the desired state match what the
+// controller will store, so the record converges. A/AAAA/CNAME honor a custom
+// TTL, so AdjustEndpoints leaves them unchanged. See #229.
 func (p *UnifiProvider) AdjustEndpoints(endpoints []*endpoint.Endpoint) ([]*endpoint.Endpoint, error) {
 	for _, ep := range endpoints {
 		if _, managed := recordTypesWithoutCustomTTL[ep.RecordType]; managed {

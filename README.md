@@ -136,7 +136,7 @@ See the [chart values](https://github.com/kubernetes-sigs/external-dns/blob/mast
 
 #### Finding the site name
 
-The site name is the short name that the Network application uses in its URLs, not the display name in the site switcher. For most setups it is `default`. If you have more than one site, open the site in the Network application and read the segment after `network/` in the browser URL:
+The site name is the short name that the Network application uses in its URLs, not the display name in the site switcher. For most setups it is `default`. If you have more than one site, open the site in the Network application and read the `<name>` segment of the browser URL:
 
 - UniFi OS console: `https://<console>/network/<name>/dashboard`
 - Site Manager: `https://unifi.ui.com/consoles/<console-id>/network/<name>/dashboard`

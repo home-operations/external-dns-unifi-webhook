@@ -124,7 +124,7 @@ See the [chart values](https://github.com/kubernetes-sigs/external-dns/blob/mast
 | --------------------------- | ------------------------------------------------------------------------------------- | --------- |
 | `UNIFI_HOST`                | Controller address, or `https://api.ui.com` for the cloud connector (**required**).   | —         |
 | `UNIFI_API_KEY`             | API key used to authenticate (**required**). Local and cloud keys differ — see below. | —         |
-| `UNIFI_SITE`                | Site name, as shown in the console URL `/manage/site/<name>/`.                        | `default` |
+| `UNIFI_SITE`                | Site name. See [Finding the site name](#finding-the-site-name).                       | `default` |
 | `UNIFI_CONSOLE_ID`          | Console ID. Setting this routes requests through the `api.ui.com` cloud connector.    | —         |
 | `UNIFI_SKIP_TLS_VERIFY`     | Skip TLS verification. Ignored in cloud mode.                                         | `true`    |
 | `UNIFI_CA_CERT`             | Path to a PEM bundle of extra trusted CAs (alternative to skipping verification).     | —         |
@@ -133,6 +133,14 @@ See the [chart values](https://github.com/kubernetes-sigs/external-dns/blob/mast
 | `UNIFI_RETRY_INITIAL_DELAY` | Initial backoff before the first retry.                                               | `500ms`   |
 | `UNIFI_RETRY_MAX_DELAY`     | Maximum backoff between retries (also caps `Retry-After`).                            | `10s`     |
 | `UNIFI_REQUEST_TIMEOUT`     | Per-attempt timeout for controller requests. Unset disables it (see below).           | —         |
+
+#### Finding the site name
+
+The site name is the short name that the Network application uses in its URLs, not the display name in the site switcher. For most setups it is `default`. If you have more than one site, open the site in the Network application and read the segment after `network/` in the browser URL:
+
+- UniFi OS console: `https://<console>/network/<name>/dashboard`
+- Site Manager: `https://unifi.ui.com/consoles/<console-id>/network/<name>/dashboard`
+- Standalone Network Application: `https://<host>:8443/manage/site/<name>/dashboard`
 
 #### Request timeouts
 
@@ -197,7 +205,7 @@ The move to UniFi Network 10.3.58 introduced breaking changes:
 
 The move of records to the `static-dns` endpoints changed the `operation` label value on `externaldns_webhook_unifi_retries_total` and `externaldns_webhook_unifi_rate_limits_total` from `dns_policies` to `static_dns`. Update any alert or dashboard selectors that match the old value.
 
-The provider no longer uses the Integration API. `UNIFI_SITE` must be the site name, as shown in the console URL `/manage/site/<name>/`. A site UUID from the Integration API fails validation at startup. The minimum UniFi Network version is 9.0.0, the first release with API keys. The `static-dns` endpoints are tested on Network 10.x only; older releases that accept an API key are untested.
+The provider no longer uses the Integration API. `UNIFI_SITE` must be the site name (see [Finding the site name](#finding-the-site-name)). A site UUID from the Integration API fails validation at startup. The minimum UniFi Network version is 9.0.0, the first release with API keys. The `static-dns` endpoints are tested on Network 10.x only; older releases that accept an API key are untested.
 
 ## Community
 

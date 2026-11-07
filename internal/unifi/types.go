@@ -98,7 +98,7 @@ func (c Config) Validate() error {
 		return fmt.Errorf("UNIFI_SITE must not be empty")
 	}
 	if siteUUIDRegex.MatchString(c.Site) {
-		return fmt.Errorf("UNIFI_SITE %q is a site UUID; use the site name from the console URL (/manage/site/<name>/), such as default", c.Site)
+		return fmt.Errorf("UNIFI_SITE %q is a site UUID; use the site name from the Network application URL (after network/ on a console, after manage/site/ on a standalone install; usually default)", c.Site)
 	}
 	if c.RetryAttempts < 1 || c.RetryAttempts > maxRetryAttempts {
 		return fmt.Errorf("UNIFI_RETRY_ATTEMPTS must be between 1 and %d, got %d", maxRetryAttempts, c.RetryAttempts)

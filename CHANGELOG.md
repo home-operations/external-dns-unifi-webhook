@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.1](https://github.com/home-operations/external-dns-unifi-webhook/compare/0.11.0...0.11.1) (2026-11-07)
+
+
+### Documentation
+
+* **unifi:** explain where to find the site name ([#389](https://github.com/home-operations/external-dns-unifi-webhook/issues/389)) ([2c22e53](https://github.com/home-operations/external-dns-unifi-webhook/commit/2c22e53426e0ddd534f9071ae3145948560c9ed9))
+
 ## [0.11.0](https://github.com/home-operations/external-dns-unifi-webhook/compare/0.10.15...0.11.0) (2026-11-06)
 
 

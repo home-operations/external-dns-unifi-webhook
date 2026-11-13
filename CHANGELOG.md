@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.11.1](https://github.com/home-operations/external-dns-unifi-webhook/compare/0.11.0...0.11.1) (2026-11-13)
+
+
+### Documentation
+
+* **unifi:** explain where to find the site name ([#389](https://github.com/home-operations/external-dns-unifi-webhook/issues/389)) ([2c22e53](https://github.com/home-operations/external-dns-unifi-webhook/commit/2c22e53426e0ddd534f9071ae3145948560c9ed9))
+
+
+### Miscellaneous Chores
+
+* **github-action:** update action docker/github-builder (v1.18.1 → v1.19.0) ([#391](https://github.com/home-operations/external-dns-unifi-webhook/issues/391)) ([20e25e8](https://github.com/home-operations/external-dns-unifi-webhook/commit/20e25e869659965c1d42ed27845b58d6cea2b85f))
+* **github-action:** update action jdx/mise-action (v5.2.6 → v5.2.7) ([#392](https://github.com/home-operations/external-dns-unifi-webhook/issues/392)) ([8482e42](https://github.com/home-operations/external-dns-unifi-webhook/commit/8482e42bb28cbbcb50e27e99ec0dffd7d3ad681b))
+* **go:** update module golang.org/x/sync (v0.24.0 → v0.25.0) ([#393](https://github.com/home-operations/external-dns-unifi-webhook/issues/393)) ([da672ee](https://github.com/home-operations/external-dns-unifi-webhook/commit/da672eed07b6f0c3d11f16575e52d6e81c59c471))
+* **mise:** update tool go (1.27.3 → 1.27.4) ([#394](https://github.com/home-operations/external-dns-unifi-webhook/issues/394)) ([e4360f4](https://github.com/home-operations/external-dns-unifi-webhook/commit/e4360f43621d5bf017dca155c290482f09f7084b))
+
 ## [0.11.0](https://github.com/home-operations/external-dns-unifi-webhook/compare/0.10.15...0.11.0) (2026-11-06)
 
 

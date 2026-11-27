@@ -1,5 +1,38 @@
 # Changelog
 
+## [0.11.1](https://github.com/home-operations/external-dns-unifi-webhook/compare/0.11.0...0.11.1) (2026-11-27)
+
+
+### Documentation
+
+* **unifi:** explain where to find the site name ([#389](https://github.com/home-operations/external-dns-unifi-webhook/issues/389)) ([2c22e53](https://github.com/home-operations/external-dns-unifi-webhook/commit/2c22e53426e0ddd534f9071ae3145948560c9ed9))
+
+
+### Continuous Integration
+
+* **release:** compress image layers with zstd ([5221d3d](https://github.com/home-operations/external-dns-unifi-webhook/commit/5221d3dafe98dc7ca442accf1625c18d3f0da14e))
+
+
+### Miscellaneous Chores
+
+* **github-action:** update action docker/github-builder (v1.18.1 → v1.19.0) ([#391](https://github.com/home-operations/external-dns-unifi-webhook/issues/391)) ([20e25e8](https://github.com/home-operations/external-dns-unifi-webhook/commit/20e25e869659965c1d42ed27845b58d6cea2b85f))
+* **github-action:** update action jdx/mise-action (v5.2.10 → v5.3.0) ([#402](https://github.com/home-operations/external-dns-unifi-webhook/issues/402)) ([78c4988](https://github.com/home-operations/external-dns-unifi-webhook/commit/78c49884d33b05bcdefa1abfab6b828bf0cf7f23))
+* **github-action:** update action jdx/mise-action (v5.2.6 → v5.2.7) ([#392](https://github.com/home-operations/external-dns-unifi-webhook/issues/392)) ([8482e42](https://github.com/home-operations/external-dns-unifi-webhook/commit/8482e42bb28cbbcb50e27e99ec0dffd7d3ad681b))
+* **github-action:** update action jdx/mise-action (v5.2.7 → v5.2.8) ([#395](https://github.com/home-operations/external-dns-unifi-webhook/issues/395)) ([1575e08](https://github.com/home-operations/external-dns-unifi-webhook/commit/1575e0811ee3a74c15408febba7f9c12addf773b))
+* **github-action:** update action jdx/mise-action (v5.2.8 → v5.2.9) ([#399](https://github.com/home-operations/external-dns-unifi-webhook/issues/399)) ([fb8a7be](https://github.com/home-operations/external-dns-unifi-webhook/commit/fb8a7bec2a382301cb991f4ed6be22dd9bcfc712))
+* **github-action:** update action zizmorcore/zizmor-action (v0.8.1 → v0.9.2) ([#403](https://github.com/home-operations/external-dns-unifi-webhook/issues/403)) ([790f4b7](https://github.com/home-operations/external-dns-unifi-webhook/commit/790f4b7f6ba84542cfc57c1b1a7b35e86e14ccd0))
+* **github-action:** update github-actions ([#401](https://github.com/home-operations/external-dns-unifi-webhook/issues/401)) ([bbabac5](https://github.com/home-operations/external-dns-unifi-webhook/commit/bbabac5435527d216cf2ed443e234fff365a9e95))
+* **go:** update module golang.org/x/sync (v0.24.0 → v0.25.0) ([#393](https://github.com/home-operations/external-dns-unifi-webhook/issues/393)) ([da672ee](https://github.com/home-operations/external-dns-unifi-webhook/commit/da672eed07b6f0c3d11f16575e52d6e81c59c471))
+* **mise:** install oxfmt from GitHub releases ([#396](https://github.com/home-operations/external-dns-unifi-webhook/issues/396)) ([216c3f1](https://github.com/home-operations/external-dns-unifi-webhook/commit/216c3f1aff231d9b86ce31853ecd5d783cb0e208))
+* **mise:** update tool github:oxc-project/oxc (0.75.0 → 0.78.0) ([#398](https://github.com/home-operations/external-dns-unifi-webhook/issues/398)) ([ebeae5c](https://github.com/home-operations/external-dns-unifi-webhook/commit/ebeae5c3a46609ecd96f86bffd723bb2029e87b3))
+* **mise:** update tool github:oxc-project/oxc (0.78.0 → 0.79.0) ([#400](https://github.com/home-operations/external-dns-unifi-webhook/issues/400)) ([a5dda3f](https://github.com/home-operations/external-dns-unifi-webhook/commit/a5dda3fcb4cfbd6320ab276d366bb9243bf088da))
+* **mise:** update tool github:oxc-project/oxc (0.79.0 → 0.80.0) ([#406](https://github.com/home-operations/external-dns-unifi-webhook/issues/406)) ([4a48f9d](https://github.com/home-operations/external-dns-unifi-webhook/commit/4a48f9d5b6dccff004206dfcb83c422e1f0e514d))
+* **mise:** update tool go (1.27.3 → 1.27.4) ([#394](https://github.com/home-operations/external-dns-unifi-webhook/issues/394)) ([e4360f4](https://github.com/home-operations/external-dns-unifi-webhook/commit/e4360f43621d5bf017dca155c290482f09f7084b))
+* **mise:** update tool go:golang.org/x/vuln/cmd/govulncheck (1.9.0 → v1.10.0) ([#397](https://github.com/home-operations/external-dns-unifi-webhook/issues/397)) ([5d603bd](https://github.com/home-operations/external-dns-unifi-webhook/commit/5d603bd2493aebec49364c7aabc8b78db3723815))
+* **mise:** update tool lefthook (2.2.2 → 2.2.3) ([#407](https://github.com/home-operations/external-dns-unifi-webhook/issues/407)) ([c0f4eff](https://github.com/home-operations/external-dns-unifi-webhook/commit/c0f4eff8e4ec6d9cb235c039db7b28ff1cb422d6))
+* **mise:** update tool zizmor (1.32.0 → 1.33.0) ([#404](https://github.com/home-operations/external-dns-unifi-webhook/issues/404)) ([fd05b0e](https://github.com/home-operations/external-dns-unifi-webhook/commit/fd05b0ee10136af66908874b178d552f259b24e3))
+* **mise:** update tool zizmor (1.33.0 → 1.33.1) ([#405](https://github.com/home-operations/external-dns-unifi-webhook/issues/405)) ([9e4224d](https://github.com/home-operations/external-dns-unifi-webhook/commit/9e4224d5ea4e84b69b8c1656a64f859e64536086))
+
 ## [0.11.0](https://github.com/home-operations/external-dns-unifi-webhook/compare/0.10.15...0.11.0) (2026-11-06)
 
 
